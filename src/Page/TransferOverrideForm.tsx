@@ -1,18 +1,18 @@
 import { ShieldAlert, Send, AlertTriangle } from "lucide-react";
 import { customToast } from "./CustomToast";
 import { useState } from "react";
-import { Card } from "./ui/card";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Label } from "./ui/label";
-import { Textarea } from "./ui/textarea";
+import { Card } from "../components/ui/card";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { Textarea } from "../components/ui/textarea";
 import {
 	Select,
 	SelectContent,
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
-} from "./ui/select";
+} from "../components/ui/select";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -22,9 +22,9 @@ import {
 	AlertDialogFooter,
 	AlertDialogHeader,
 	AlertDialogTitle,
-} from "./ui/alert-dialog";
-import { Badge } from "./ui/badge";
-import { ScrollArea } from "./ui/scroll-area";
+} from "../components/ui/alert-dialog";
+import { Badge } from "../components/ui/badge";
+import { ScrollArea } from "../components/ui/scroll-area";
 
 export function TransferOverrideForm() {
 	const [showConfirm, setShowConfirm] = useState(false);

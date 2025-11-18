@@ -1,15 +1,15 @@
 import { useState } from "react";
-import { Button } from "./ui/button";
+import { Button } from "../components/ui/button";
 import {
 	Sheet,
 	SheetContent,
 	SheetHeader,
 	SheetTitle,
 	SheetDescription,
-} from "./ui/sheet";
-import { ScrollArea } from "./ui/scroll-area";
-import { Badge } from "./ui/badge";
-import { Separator } from "./ui/separator";
+} from "../components/ui/sheet";
+import { ScrollArea } from "../components/ui/scroll-area";
+import { Badge } from "../components/ui/badge";
+import { Separator } from "../components/ui/separator";
 import { Bell, CheckCircle2, AlertCircle, Info, X } from "lucide-react";
 import { cn } from "../utils";
 

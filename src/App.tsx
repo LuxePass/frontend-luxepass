@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ThemeProvider } from "./context/ThemeProvider";
 import { AuthFlow } from "./Page/Auth";
 import { Toaster } from "./components/ui/sonner";
-import { Sidebar } from "./components/Sidebar";
+import { Sidebar } from "./Page/Sidebar";
 import {
 	Sheet,
 	SheetContent,
@@ -22,19 +22,19 @@ import {
 	Users,
 } from "lucide-react";
 import { Input } from "./components/ui/input";
-import { ThemeToggle } from "./components/ThemeToggle";
-import { NotificationBell } from "./components/NotificationBell";
-import { MetricsCards } from "./components/MetricsCards";
-import { QuickViews } from "./components/QuickViews";
-import { ClientDetails } from "./components/ClientDetails";
-import { Wallet } from "./components/Wallet";
-import { InAppBrowser } from "./components/InAppBrowser";
-import { TaskQueue } from "./components/TaskQueue";
-import { TransferOverrideForm } from "./components/TransferOverrideForm";
-import { ListingManagement } from "./components/ListingManagement";
-import { LiveChat } from "./components/LiveChat";
-import { ReferralProgram } from "./components/ReferralProgram";
-import { AIAssistantModal } from "./components/AIAssistantModal";
+import { ThemeToggle } from "./Page/ThemeToggle";
+import { NotificationBell } from "./Page/NotificationBell";
+import { MetricsCards } from "./Page/MetricsCards";
+import { QuickViews } from "./Page/QuickViews";
+import { ClientDetails } from "./Page/ClientDetails";
+import { Wallet } from "./Page/Wallet";
+import { InAppBrowser } from "./Page/InAppBrowser";
+import { TaskQueue } from "./Page/TaskQueue";
+import { TransferOverrideForm } from "./Page/TransferOverrideForm";
+import { ListingManagement } from "./Page/ListingManagement";
+import { LiveChat } from "./Page/LiveChat";
+import { ReferralProgram } from "./Page/ReferralProgram";
+import { AIAssistantModal } from "./Page/AIAssistantModal";
 
 function App() {
 	// Authentication state

@@ -2,11 +2,11 @@
 
 import { customToast } from "./CustomToast";
 import { useState } from "react";
-import { Card } from "./ui/card";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Badge } from "./ui/badge";
-import { Label } from "./ui/label";
+import { Card } from "../components/ui/card";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Badge } from "../components/ui/badge";
+import { Label } from "../components/ui/label";
 import {
 	Table,
 	TableBody,
@@ -14,28 +14,28 @@ import {
 	TableHead,
 	TableHeader,
 	TableRow,
-} from "./ui/table";
+} from "../components/ui/table";
 import {
 	Dialog,
 	DialogContent,
 	DialogDescription,
 	DialogHeader,
 	DialogTitle,
-} from "./ui/dialog";
+} from "../components/ui/dialog";
 import {
 	Select,
 	SelectContent,
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
-} from "./ui/select";
+} from "../components/ui/select";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuTrigger,
-} from "./ui/dropdown-menu";
-import { ScrollArea } from "./ui/scroll-area";
+} from "../components/ui/dropdown-menu";
+import { ScrollArea } from "../components/ui/scroll-area";
 import {
 	Search,
 	Filter,

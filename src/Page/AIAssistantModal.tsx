@@ -5,12 +5,12 @@ import {
 	DialogHeader,
 	DialogTitle,
 	DialogDescription,
-} from "./ui/dialog";
-import { Button } from "./ui/button";
-import { Textarea } from "./ui/textarea";
-import { ScrollArea } from "./ui/scroll-area";
-import { Avatar, AvatarFallback } from "./ui/avatar";
-import { Separator } from "./ui/separator";
+} from "../components/ui/dialog";
+import { Button } from "../components/ui/button";
+import { Textarea } from "../components/ui/textarea";
+import { ScrollArea } from "../components/ui/scroll-area";
+import { Avatar, AvatarFallback } from "../components/ui/avatar";
+import { Separator } from "../components/ui/separator";
 import { Sparkles, Send } from "lucide-react";
 import { cn } from "../utils";
 
