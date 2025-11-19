@@ -328,7 +328,6 @@ export function LiveChat() {
 
 	return (
 		<Card className="h-full flex flex-col lg:flex-row bg-white dark:bg-zinc-900/50 border-zinc-200 dark:border-zinc-800 overflow-hidden">
-			{/* Conversations List */}
 			<div
 				className={cn(
 					"w-full lg:w-80 border-b lg:border-b-0 lg:border-r border-zinc-200 dark:border-zinc-800 flex flex-col shrink-0 lg:h-full",
