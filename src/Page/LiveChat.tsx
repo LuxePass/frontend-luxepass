@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback } from "../components/ui/avatar";
 import { Badge } from "../components/ui/badge";
 import { ScrollArea } from "../components/ui/scroll-area";
 import { Separator } from "../components/ui/separator";
+import { UserCircle } from "lucide-react";
 import {
 	MessageCircle,
 	Send,
@@ -14,18 +15,21 @@ import {
 	CheckCheck,
 	Clock,
 	X,
+	RefreshCw,
 } from "lucide-react";
 import { cn } from "../utils";
 import { customToast } from "./CustomToast";
 
 interface ChatMessage {
 	id: string;
+	messageId?: string; // WhatsApp message ID for status tracking
 	conversationId: string;
 	sender: "client" | "pa";
 	clientName?: string;
 	content: string;
 	timestamp: string;
-	status: "sent" | "delivered" | "read";
+	timestampValue?: number; // Numeric timestamp for sorting/grouping
+	status: "sent" | "delivered" | "read" | "received";
 	platform: "whatsapp";
 }
 
@@ -47,6 +51,10 @@ type MessageApiItem = Partial<ChatMessage> & {
 	timestampValue?: string | number;
 };
 
+// Polling intervals (in milliseconds)
+const CONVERSATIONS_POLL_INTERVAL = 10000; // 10 seconds
+const MESSAGES_POLL_INTERVAL = 5000; // 5 seconds
+
 export function LiveChat() {
 	const [conversations, setConversations] = useState<ChatConversation[]>([]);
 	const [messages, setMessages] = useState<Record<string, ChatMessage[]>>({});
@@ -58,10 +66,21 @@ export function LiveChat() {
 	const [isLoadingConversations, setIsLoadingConversations] = useState(false);
 	const [isLoadingMessages, setIsLoadingMessages] = useState(false);
 	const [isSending, setIsSending] = useState(false);
+	const [isRefreshing, setIsRefreshing] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const [lastConversationFetch, setLastConversationFetch] = useState<number>(0);
+	const [lastMessageFetch, setLastMessageFetch] = useState<
+		Record<string, number>
+	>({});
+
+	// Refs for polling intervals
+	const conversationsPollRef = useRef<NodeJS.Timeout | null>(null);
+	const messagesPollRef = useRef<NodeJS.Timeout | null>(null);
 
 	const whatsappBackendBaseUrl =
-		import.meta.env.VITE_WHATSAPP_BACKEND_URL ?? "/api/whatsapp";
+		import.meta.env.VITE_WHATSAPP_BACKEND_URL ??
+		"https://whatsapp-backend-zeta.vercel.app/api";
+
 	const backendHeaders = useMemo(
 		() => ({
 			"Content-Type": "application/json",
@@ -69,164 +88,633 @@ export function LiveChat() {
 		[]
 	);
 
-	const normalizeTimestamp = useCallback((timestamp?: string | number) => {
-		if (!timestamp) return "";
-		const numericTs =
-			typeof timestamp === "string" ? Number(timestamp) : timestamp;
-		if (Number.isNaN(numericTs)) return "";
-		const date =
-			numericTs < 10_000_000_000
-				? new Date(numericTs * 1000)
-				: new Date(numericTs);
-		return date.toLocaleTimeString("en-US", {
-			hour: "2-digit",
-			minute: "2-digit",
-		});
+	/**
+	 * Normalize timestamp to time string (HH:MM format)
+	 */
+	const normalizeTimestamp = useCallback(
+		(timestamp?: string | number | Date) => {
+			if (!timestamp) return "";
+
+			let date: Date;
+
+			if (timestamp instanceof Date) {
+				date = timestamp;
+			} else if (typeof timestamp === "string") {
+				// Try parsing ISO string first
+				date = new Date(timestamp);
+				// If invalid, try parsing as number
+				if (isNaN(date.getTime())) {
+					const numericTs = Number(timestamp);
+					if (!isNaN(numericTs)) {
+						date =
+							numericTs < 10_000_000_000
+								? new Date(numericTs * 1000)
+								: new Date(numericTs);
+					} else {
+						return "";
+					}
+				}
+			} else {
+				// Number timestamp
+				const numericTs = timestamp;
+				date =
+					numericTs < 10_000_000_000
+						? new Date(numericTs * 1000)
+						: new Date(numericTs);
+			}
+
+			if (isNaN(date.getTime())) {
+				return "";
+			}
+
+			return date.toLocaleTimeString("en-US", {
+				hour: "2-digit",
+				minute: "2-digit",
+			});
+		},
+		[]
+	);
+
+	/**
+	 * Get date label for message grouping (Today, Yesterday, or date)
+	 */
+	const getDateLabel = useCallback(
+		(timestamp?: string | number | Date): string => {
+			if (!timestamp) return "";
+
+			let date: Date;
+
+			if (timestamp instanceof Date) {
+				date = timestamp;
+			} else if (typeof timestamp === "string") {
+				date = new Date(timestamp);
+				if (isNaN(date.getTime())) {
+					const numericTs = Number(timestamp);
+					if (!isNaN(numericTs)) {
+						date =
+							numericTs < 10_000_000_000
+								? new Date(numericTs * 1000)
+								: new Date(numericTs);
+					} else {
+						return "";
+					}
+				}
+			} else {
+				const numericTs = timestamp;
+				date =
+					numericTs < 10_000_000_000
+						? new Date(numericTs * 1000)
+						: new Date(numericTs);
+			}
+
+			if (isNaN(date.getTime())) {
+				return "";
+			}
+
+			const today = new Date();
+			today.setHours(0, 0, 0, 0);
+
+			const yesterday = new Date(today);
+			yesterday.setDate(yesterday.getDate() - 1);
+
+			const messageDate = new Date(date);
+			messageDate.setHours(0, 0, 0, 0);
+
+			if (messageDate.getTime() === today.getTime()) {
+				return "Today";
+			} else if (messageDate.getTime() === yesterday.getTime()) {
+				return "Yesterday";
+			} else {
+				return messageDate.toLocaleDateString("en-US", {
+					weekday: "long",
+					year: "numeric",
+					month: "long",
+					day: "numeric",
+				});
+			}
+		},
+		[]
+	);
+
+	/**
+	 * Group messages by date
+	 */
+	const groupMessagesByDate = useCallback(
+		(
+			messages: ChatMessage[]
+		): Array<{ date: string; messages: ChatMessage[] }> => {
+			const groups: Map<string, ChatMessage[]> = new Map();
+
+			messages.forEach((message) => {
+				// Get timestamp value from message
+				let timestampValue: number | null = null;
+
+				if (message.timestampValue) {
+					timestampValue =
+						typeof message.timestampValue === "string"
+							? Number(message.timestampValue)
+							: message.timestampValue;
+				} else if (message.timestamp) {
+					// Try to parse timestamp string
+					const date = new Date(message.timestamp);
+					if (!isNaN(date.getTime())) {
+						timestampValue = date.getTime();
+					}
+				}
+
+				if (timestampValue === null) {
+					// Fallback to current time if no valid timestamp
+					timestampValue = Date.now();
+				}
+
+				const dateLabel = getDateLabel(timestampValue);
+				if (!dateLabel) return;
+
+				if (!groups.has(dateLabel)) {
+					groups.set(dateLabel, []);
+				}
+				groups.get(dateLabel)!.push(message);
+			});
+
+			// Convert to array and sort by date (most recent first)
+			return Array.from(groups.entries())
+				.map(([date, msgs]) => ({ date, messages: msgs }))
+				.sort((a, b) => {
+					// Sort dates: Today first, then Yesterday, then older dates
+					if (a.date === "Today") return -1;
+					if (b.date === "Today") return 1;
+					if (a.date === "Yesterday") return -1;
+					if (b.date === "Yesterday") return 1;
+					// For older dates, compare the actual dates
+					const dateA = new Date(a.messages[0]?.timestampValue || 0);
+					const dateB = new Date(b.messages[0]?.timestampValue || 0);
+					return dateB.getTime() - dateA.getTime();
+				});
+		},
+		[getDateLabel]
+	);
+
+	/**
+	 * Normalize phone number to digits only (backend requirement)
+	 */
+	const normalizePhoneNumber = useCallback((phone: string): string => {
+		// Remove all non-digit characters
+		return phone.replace(/\D/g, "");
 	}, []);
 
-	const fetchConversations = useCallback(async () => {
-		setIsLoadingConversations(true);
-		setError(null);
-
-		try {
-			const response = await fetch(`${whatsappBackendBaseUrl}/conversations`, {
-				headers: backendHeaders,
-			});
-
-			if (!response.ok) {
-				const body = await response.json().catch(() => ({}));
-				throw new Error(body?.error?.message ?? "Unable to fetch conversations");
+	/**
+	 * Fetch conversations from backend
+	 */
+	const fetchConversations = useCallback(
+		async (silent = false) => {
+			if (!silent) {
+				setIsLoadingConversations(true);
 			}
+			setError(null);
 
-			const payload = (await response.json()) as {
-				data?: ConversationApiItem[];
-			};
-			const rawItems = Array.isArray(payload) ? payload : payload?.data ?? [];
+			try {
+				const response = await fetch(`${whatsappBackendBaseUrl}/conversations`, {
+					headers: backendHeaders,
+					method: "GET",
+				});
 
-			const normalized: ChatConversation[] = rawItems.map((conversation) => {
-				const conv = conversation as ConversationApiItem;
-				const fallbackId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-				const timestamp =
-					conv.lastMessageTime ??
-					(conv.lastMessageTimestamp
-						? normalizeTimestamp(conv.lastMessageTimestamp)
-						: "");
+				if (!response.ok) {
+					const body = await response.json().catch(() => ({}));
+					const errorMessage =
+						body?.error?.message || body?.error || "Unable to fetch conversations";
+					throw new Error(errorMessage);
+				}
 
-				return {
-					id: conv.id ?? fallbackId,
-					clientName: conv.clientName ?? "WhatsApp User",
-					clientPhone: conv.clientPhone ?? "Unknown",
-					lastMessage: conv.lastMessage ?? "",
-					lastMessageTime: timestamp,
-					unreadCount: conv.unreadCount ?? 0,
-					status: conv.status ?? "active",
+				const payload = (await response.json()) as {
+					success?: boolean;
+					data?: ConversationApiItem[];
+					error?: string;
 				};
-			});
 
-			setConversations(normalized);
-			if (normalized.length) {
-				setSelectedConversation((prev) => prev ?? normalized[0].id);
+				// Handle different response formats
+				let rawItems: ConversationApiItem[] = [];
+				if (Array.isArray(payload)) {
+					rawItems = payload;
+				} else if (payload.success && Array.isArray(payload.data)) {
+					rawItems = payload.data;
+				} else if (Array.isArray(payload.data)) {
+					rawItems = payload.data;
+				}
+
+				const normalized: ChatConversation[] = rawItems.map((conversation) => {
+					const conv = conversation as ConversationApiItem;
+					// Use conversation ID if available, otherwise generate a stable ID from phone number
+					const stableId =
+						conv.id ??
+						(conv.clientPhone
+							? conv.clientPhone.replace(/\D/g, "")
+							: `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+					const timestamp =
+						conv.lastMessageTime ??
+						(conv.lastMessageTimestamp
+							? normalizeTimestamp(conv.lastMessageTimestamp)
+							: "");
+
+					return {
+						id: stableId,
+						clientName: conv.clientName ?? "WhatsApp User",
+						clientPhone: conv.clientPhone ?? "Unknown",
+						lastMessage: conv.lastMessage ?? "",
+						lastMessageTime: timestamp,
+						unreadCount: conv.unreadCount ?? 0,
+						status: conv.status ?? "active",
+					};
+				});
+
+				// Smart merge: preserve existing conversations and only update what changed
+				setConversations((prev) => {
+					// If this is the first load and we have no previous data, just set it
+					if (prev.length === 0 && normalized.length > 0) {
+						return normalized;
+					}
+
+					// If new data is empty but we have existing data, preserve existing (don't clear)
+					if (normalized.length === 0 && prev.length > 0) {
+						return prev;
+					}
+
+					// Create a map of existing conversations by ID for quick lookup
+					const prevMap = new Map(prev.map((c) => [c.id, c]));
+					const newMap = new Map(normalized.map((c) => [c.id, c]));
+
+					// Check if anything actually changed
+					let hasChanges = false;
+					const merged: ChatConversation[] = [];
+
+					// Process all conversations (both existing and new)
+					const allIds = new Set([...prevMap.keys(), ...newMap.keys()]);
+
+					for (const id of allIds) {
+						const prevConv = prevMap.get(id);
+						const newConv = newMap.get(id);
+
+						if (!newConv) {
+							// Conversation exists in prev but not in new - keep it (don't remove)
+							if (prevConv) {
+								merged.push(prevConv);
+							}
+						} else if (!prevConv) {
+							// New conversation - add it
+							merged.push(newConv);
+							hasChanges = true;
+						} else {
+							// Both exist - check if changed
+							const changed =
+								prevConv.clientName !== newConv.clientName ||
+								prevConv.clientPhone !== newConv.clientPhone ||
+								prevConv.lastMessage !== newConv.lastMessage ||
+								prevConv.lastMessageTime !== newConv.lastMessageTime ||
+								prevConv.unreadCount !== newConv.unreadCount ||
+								prevConv.status !== newConv.status;
+
+							if (changed) {
+								merged.push(newConv);
+								hasChanges = true;
+							} else {
+								// No change - keep the previous one to maintain reference stability
+								merged.push(prevConv);
+							}
+						}
+					}
+
+					// Sort by last message time (most recent first)
+					merged.sort((a, b) => {
+						const timeA = new Date(a.lastMessageTime || 0).getTime();
+						const timeB = new Date(b.lastMessageTime || 0).getTime();
+						return timeB - timeA;
+					});
+
+					// Only update if something changed
+					return hasChanges || merged.length !== prev.length ? merged : prev;
+				});
+
+				setLastConversationFetch(Date.now());
+
+				// Auto-select first conversation if none selected
+				if (normalized.length > 0 && !selectedConversation) {
+					setSelectedConversation(normalized[0].id);
+				}
+			} catch (err) {
+				console.error("Error fetching conversations:", err);
+				const errorMessage =
+					err instanceof Error
+						? err.message
+						: "Something went wrong fetching conversations.";
+
+				// Only set error if we don't have existing data (don't clear on refresh errors)
+				setConversations((prev) => {
+					// If we have existing conversations, keep them and just log the error
+					if (prev.length > 0) {
+						console.warn(
+							"Failed to refresh conversations, keeping existing data:",
+							errorMessage
+						);
+						return prev;
+					}
+					// Only set error if we have no data
+					return prev;
+				});
+
+				setError(errorMessage);
+
+				if (!silent) {
+					customToast.error({
+						title: "WhatsApp Error",
+						description: errorMessage,
+					});
+				}
+			} finally {
+				if (!silent) {
+					setIsLoadingConversations(false);
+				}
 			}
-		} catch (err) {
-			console.error(err);
-			setError(
-				err instanceof Error
-					? err.message
-					: "Something went wrong fetching conversations."
-			);
-			customToast.error({
-				title: "WhatsApp Error",
-				description:
-					err instanceof Error ? err.message : "Unable to load conversations.",
-			});
-		} finally {
-			setIsLoadingConversations(false);
-		}
-	}, [backendHeaders, normalizeTimestamp, whatsappBackendBaseUrl]);
+		},
+		[
+			backendHeaders,
+			normalizeTimestamp,
+			whatsappBackendBaseUrl,
+			selectedConversation,
+		]
+	);
 
+	/**
+	 * Fetch messages for a specific conversation
+	 */
 	const fetchMessages = useCallback(
-		async (conversationId: string) => {
-			setIsLoadingMessages(true);
+		async (conversationId: string, silent = false) => {
+			if (!conversationId) return;
+
+			if (!silent) {
+				setIsLoadingMessages(true);
+			}
 
 			try {
 				const response = await fetch(
 					`${whatsappBackendBaseUrl}/conversations/${conversationId}/messages`,
 					{
 						headers: backendHeaders,
+						method: "GET",
 					}
 				);
 
 				if (!response.ok) {
 					const body = await response.json().catch(() => ({}));
-					throw new Error(body?.error?.message ?? "Unable to fetch messages");
+					const errorMessage =
+						body?.error?.message || body?.error || "Unable to fetch messages";
+					throw new Error(errorMessage);
 				}
 
 				const payload = (await response.json()) as {
+					success?: boolean;
 					data?: MessageApiItem[];
+					error?: string;
 				};
-				const rawItems = Array.isArray(payload) ? payload : payload?.data ?? [];
+
+				// Handle different response formats
+				let rawItems: MessageApiItem[] = [];
+				if (Array.isArray(payload)) {
+					rawItems = payload;
+				} else if (payload.success && Array.isArray(payload.data)) {
+					rawItems = payload.data;
+				} else if (Array.isArray(payload.data)) {
+					rawItems = payload.data;
+				}
+
 				const normalizedMessages: ChatMessage[] = rawItems.map((message) => {
 					const msg = message as MessageApiItem;
-					const fallbackId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+					// Use message ID if available, otherwise generate stable ID
+					const stableId =
+						msg.id ??
+						`msg_${conversationId}_${msg.timestampValue ?? Date.now()}_${Math.random()
+							.toString(36)
+							.slice(2)}`;
+
+					// Parse timestamp value properly
+					let timestampValue: number | undefined = undefined;
+					let timestampStr = msg.timestamp ?? "";
+
+					if (msg.timestampValue !== undefined) {
+						timestampValue =
+							typeof msg.timestampValue === "string"
+								? Number(msg.timestampValue)
+								: msg.timestampValue;
+
+						if (!isNaN(timestampValue)) {
+							// Convert to Date and format
+							const date =
+								timestampValue < 10_000_000_000
+									? new Date(timestampValue * 1000)
+									: new Date(timestampValue);
+							if (!isNaN(date.getTime())) {
+								timestampStr = normalizeTimestamp(date);
+								if (!timestampValue || timestampValue < 10_000_000_000) {
+									timestampValue = date.getTime();
+								}
+							}
+						}
+					} else if (msg.timestamp) {
+						// Try to parse timestamp string
+						const date = new Date(msg.timestamp);
+						if (!isNaN(date.getTime())) {
+							timestampValue = date.getTime();
+							timestampStr = normalizeTimestamp(date);
+						}
+					}
+
+					// If still no timestamp, use current time
+					if (!timestampValue) {
+						timestampValue = Date.now();
+						timestampStr = normalizeTimestamp(new Date());
+					}
 
 					return {
-						id: msg.id ?? fallbackId,
+						id: stableId,
+						messageId: msg.messageId,
 						conversationId,
 						sender: msg.sender ?? "client",
 						clientName: msg.clientName,
 						content: msg.content ?? "",
-						timestamp:
-							msg.timestamp ??
-							(msg.timestampValue ? normalizeTimestamp(msg.timestampValue) : ""),
+						timestamp: timestampStr,
+						timestampValue: timestampValue,
 						status: msg.status ?? "sent",
 						platform: msg.platform ?? "whatsapp",
 					};
 				});
 
-				setMessages((prev) => ({
+				// Smart merge: preserve existing messages and only update what changed
+				setMessages((prev) => {
+					const prevMessages = prev[conversationId] ?? [];
+
+					// If this is the first load for this conversation, just set it
+					if (prevMessages.length === 0 && normalizedMessages.length > 0) {
+						return {
+							...prev,
+							[conversationId]: normalizedMessages,
+						};
+					}
+
+					// If new data is empty but we have existing messages, preserve existing
+					if (normalizedMessages.length === 0 && prevMessages.length > 0) {
+						return prev;
+					}
+
+					// Create maps for quick lookup
+					const prevMap = new Map(prevMessages.map((m) => [m.id, m]));
+					const newMap = new Map(normalizedMessages.map((m) => [m.id, m]));
+
+					// Check if anything actually changed
+					let hasChanges = false;
+					const merged: ChatMessage[] = [];
+
+					// Process all messages (both existing and new)
+					const allIds = new Set([...prevMap.keys(), ...newMap.keys()]);
+
+					for (const id of allIds) {
+						const prevMsg = prevMap.get(id);
+						const newMsg = newMap.get(id);
+
+						if (!newMsg) {
+							// Message exists in prev but not in new - keep it (don't remove)
+							if (prevMsg) {
+								merged.push(prevMsg);
+							}
+						} else if (!prevMsg) {
+							// New message - add it
+							merged.push(newMsg);
+							hasChanges = true;
+						} else {
+							// Both exist - check if changed
+							const changed =
+								prevMsg.content !== newMsg.content ||
+								prevMsg.timestamp !== newMsg.timestamp ||
+								prevMsg.status !== newMsg.status ||
+								prevMsg.sender !== newMsg.sender;
+
+							if (changed) {
+								merged.push(newMsg);
+								hasChanges = true;
+							} else {
+								// No change - keep the previous one to maintain reference stability
+								merged.push(prevMsg);
+							}
+						}
+					}
+
+					// Sort by timestamp (oldest first for chat display)
+					merged.sort((a, b) => {
+						const timeA = new Date(a.timestamp || 0).getTime();
+						const timeB = new Date(b.timestamp || 0).getTime();
+						return timeA - timeB;
+					});
+
+					// Only update if something changed
+					return hasChanges || merged.length !== prevMessages.length
+						? {
+								...prev,
+								[conversationId]: merged,
+						  }
+						: prev;
+				});
+
+				setLastMessageFetch((prev) => ({
 					...prev,
-					[conversationId]: normalizedMessages,
+					[conversationId]: Date.now(),
 				}));
 			} catch (err) {
-				console.error(err);
-				setError(
+				console.error("Error fetching messages:", err);
+				const errorMessage =
 					err instanceof Error
 						? err.message
-						: "Something went wrong fetching messages."
-				);
-				customToast.error({
-					title: "WhatsApp Error",
-					description:
-						err instanceof Error ? err.message : "Unable to load messages.",
+						: "Something went wrong fetching messages.";
+
+				// Preserve existing messages on error (don't clear)
+				setMessages((prev) => {
+					const existingMessages = prev[conversationId] ?? [];
+					if (existingMessages.length > 0) {
+						console.warn(
+							"Failed to refresh messages, keeping existing data:",
+							errorMessage
+						);
+						return prev;
+					}
+					return prev;
 				});
+
+				setError(errorMessage);
+
+				if (!silent) {
+					customToast.error({
+						title: "WhatsApp Error",
+						description: errorMessage,
+					});
+				}
 			} finally {
-				setIsLoadingMessages(false);
+				if (!silent) {
+					setIsLoadingMessages(false);
+				}
 			}
 		},
 		[backendHeaders, normalizeTimestamp, whatsappBackendBaseUrl]
 	);
 
-	useEffect(() => {
-		void fetchConversations();
-	}, [fetchConversations]);
+	/**
+	 * Handle manual refresh
+	 */
+	const handleRefresh = useCallback(async () => {
+		setIsRefreshing(true);
+		await Promise.all([
+			fetchConversations(false),
+			selectedConversation
+				? fetchMessages(selectedConversation, false)
+				: Promise.resolve(),
+		]);
+		setIsRefreshing(false);
+		customToast.success({
+			title: "Refreshed",
+			description: "Conversations and messages updated",
+		});
+	}, [fetchConversations, fetchMessages, selectedConversation]);
 
-	useEffect(() => {
-		if (!selectedConversation) return;
-		void fetchMessages(selectedConversation);
-	}, [fetchMessages, selectedConversation]);
-
+	/**
+	 * Send a message
+	 */
 	const handleSendMessage = useCallback(async () => {
 		if (!inputMessage.trim() || !selectedConversation) return;
 
 		const conv = conversations.find((c) => c.id === selectedConversation);
-		if (!conv || !conv.clientPhone) return;
+		if (!conv || !conv.clientPhone) {
+			customToast.error({
+				title: "Error",
+				description: "Invalid conversation or phone number",
+			});
+			return;
+		}
 
 		setIsSending(true);
 
 		try {
+			// Normalize phone number (remove + and spaces)
+			const normalizedPhone = normalizePhoneNumber(conv.clientPhone);
+
+			// Validate phone number format
+			if (
+				!normalizedPhone ||
+				normalizedPhone.length < 10 ||
+				normalizedPhone.length > 15
+			) {
+				throw new Error(
+					`Invalid phone number format: ${conv.clientPhone}. Phone number must be 10-15 digits.`
+				);
+			}
+
 			const payload = {
-				to: conv.clientPhone,
-				conversationId: selectedConversation,
+				to: normalizedPhone,
+				type: "text",
 				message: inputMessage.trim(),
 			};
 
@@ -238,38 +726,82 @@ export function LiveChat() {
 
 			if (!response.ok) {
 				const body = await response.json().catch(() => ({}));
-				throw new Error(body?.error?.message ?? "Unable to send WhatsApp message");
+				// Handle different error formats
+				let errorMessage = "Unable to send WhatsApp message";
+				if (body?.error) {
+					if (typeof body.error === "string") {
+						errorMessage = body.error;
+					} else if (body.error.message) {
+						errorMessage = body.error.message;
+					} else if (body.error.error?.message) {
+						errorMessage = body.error.error.message;
+					}
+				}
+
+				// Check for specific error about phone number ID
+				if (
+					errorMessage.includes("phoneNumberId") ||
+					errorMessage.includes("META_PHONE_NUMBER_ID")
+				) {
+					errorMessage =
+						"Backend configuration error: WhatsApp Phone Number ID is not set. Please contact administrator.";
+				}
+
+				throw new Error(errorMessage);
 			}
 
 			const data = await response.json();
-			const messageId = data?.id ?? Date.now().toString();
-			const timestamp = new Date().toLocaleTimeString("en-US", {
-				hour: "2-digit",
-				minute: "2-digit",
-			});
+			const messageId =
+				data?.messageId ??
+				data?.id ??
+				`msg_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+			const now = new Date();
+			const timestamp = normalizeTimestamp(now);
+			const timestampValue = now.getTime();
 
 			const newMessage: ChatMessage = {
 				id: messageId,
+				messageId: messageId, // Store WhatsApp message ID for status tracking
 				conversationId: selectedConversation,
 				sender: "pa",
 				content: inputMessage.trim(),
 				timestamp,
+				timestampValue,
 				status: "sent",
 				platform: "whatsapp",
 			};
 
+			// Optimistically update UI
 			setMessages((prev) => ({
 				...prev,
 				[selectedConversation]: [...(prev[selectedConversation] ?? []), newMessage],
 			}));
+
+			// Update conversation last message
+			setConversations((prev) =>
+				prev.map((c) =>
+					c.id === selectedConversation
+						? {
+								...c,
+								lastMessage: inputMessage.trim(),
+								lastMessageTime: timestamp,
+						  }
+						: c
+				)
+			);
 
 			setInputMessage("");
 			customToast.success({
 				title: "Message Sent",
 				description: "Message sent via WhatsApp Business API",
 			});
+
+			// Refresh messages after a short delay to get updated status
+			setTimeout(() => {
+				void fetchMessages(selectedConversation, true);
+			}, 1000);
 		} catch (err) {
-			console.error(err);
+			console.error("Error sending message:", err);
 			customToast.error({
 				title: "WhatsApp Error",
 				description:
@@ -279,13 +811,32 @@ export function LiveChat() {
 			setIsSending(false);
 		}
 	}, [
-		backendHeaders,
-		conversations,
 		inputMessage,
 		selectedConversation,
+		conversations,
+		normalizePhoneNumber,
 		whatsappBackendBaseUrl,
+		backendHeaders,
+		normalizeTimestamp,
+		fetchMessages,
 	]);
 
+	/**
+	 * Handle conversation selection
+	 */
+	const handleSelectConversation = useCallback(
+		(conversationId: string) => {
+			setSelectedConversation(conversationId);
+			setShowChat(true);
+			// Fetch messages immediately when conversation is selected
+			void fetchMessages(conversationId, false);
+		},
+		[fetchMessages]
+	);
+
+	/**
+	 * Handle close chat
+	 */
 	const handleCloseChat = () => {
 		if (!selectedConversation) return;
 
@@ -297,10 +848,70 @@ export function LiveChat() {
 			});
 		}
 
-		// Clear the selected conversation
 		setSelectedConversation(null);
 		setInputMessage("");
 	};
+
+	// Initial fetch on mount
+	useEffect(() => {
+		void fetchConversations(false);
+	}, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+	// Set up polling for conversations
+	useEffect(() => {
+		// Clear existing interval
+		if (conversationsPollRef.current) {
+			clearInterval(conversationsPollRef.current);
+		}
+
+		// Set up new interval for polling conversations
+		conversationsPollRef.current = setInterval(() => {
+			void fetchConversations(true); // Silent fetch
+		}, CONVERSATIONS_POLL_INTERVAL);
+
+		// Cleanup on unmount
+		return () => {
+			if (conversationsPollRef.current) {
+				clearInterval(conversationsPollRef.current);
+			}
+		};
+	}, [fetchConversations]);
+
+	// Set up polling for messages of selected conversation
+	useEffect(() => {
+		if (!selectedConversation) {
+			// Clear interval if no conversation selected
+			if (messagesPollRef.current) {
+				clearInterval(messagesPollRef.current);
+				messagesPollRef.current = null;
+			}
+			return;
+		}
+
+		// Clear existing interval
+		if (messagesPollRef.current) {
+			clearInterval(messagesPollRef.current);
+		}
+
+		// Set up new interval for polling messages
+		messagesPollRef.current = setInterval(() => {
+			void fetchMessages(selectedConversation, true); // Silent fetch
+		}, MESSAGES_POLL_INTERVAL);
+
+		// Cleanup on unmount or conversation change
+		return () => {
+			if (messagesPollRef.current) {
+				clearInterval(messagesPollRef.current);
+			}
+		};
+	}, [selectedConversation, fetchMessages]);
+
+	// Fetch messages when conversation is selected
+	useEffect(() => {
+		if (selectedConversation) {
+			void fetchMessages(selectedConversation, false);
+		}
+	}, [selectedConversation]); // eslint-disable-line react-hooks/exhaustive-deps
 
 	const getInitials = (name: string) => {
 		return name
@@ -313,11 +924,30 @@ export function LiveChat() {
 	const getStatusIcon = (status: string) => {
 		switch (status) {
 			case "read":
-				return <CheckCheck className="size-3 text-blue-400" />;
+				// Double blue checkmarks (read)
+				return <CheckCheck className="size-3 text-blue-500 dark:text-blue-400" />;
 			case "delivered":
-				return <CheckCheck className="size-3 text-zinc-500" />;
+				// Double gray checkmarks (delivered)
+				return <CheckCheck className="size-3 text-zinc-500 dark:text-zinc-400" />;
+			case "sent":
+				// Single gray checkmark (sent)
+				return (
+					<svg
+						className="size-3 text-zinc-500 dark:text-zinc-400"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+						strokeWidth="2">
+						<path
+							strokeLinecap="round"
+							strokeLinejoin="round"
+							d="M5 13l4 4L19 7"
+						/>
+					</svg>
+				);
 			default:
-				return <Clock className="size-3 text-zinc-500" />;
+				// Clock icon for pending
+				return <Clock className="size-3 text-zinc-500 dark:text-zinc-400" />;
 		}
 	};
 
@@ -325,6 +955,12 @@ export function LiveChat() {
 	const selectedMessages = selectedConversation
 		? messages[selectedConversation] ?? []
 		: [];
+
+	// Group messages by date
+	const groupedMessages = useMemo(() => {
+		if (selectedMessages.length === 0) return [];
+		return groupMessagesByDate(selectedMessages);
+	}, [selectedMessages, groupMessagesByDate]);
 
 	return (
 		<Card className="h-full flex flex-col lg:flex-row bg-white dark:bg-zinc-900/50 border-zinc-200 dark:border-zinc-800 overflow-hidden">
@@ -335,9 +971,20 @@ export function LiveChat() {
 					showChat && "hidden lg:flex"
 				)}>
 				<div className="p-3 lg:p-4 border-b border-zinc-200 dark:border-zinc-800 shrink-0">
-					<div className="flex items-center gap-2 mb-1">
-						<MessageCircle className="size-5 text-green-500 dark:text-green-400" />
-						<h3 className="text-base lg:text-lg">WhatsApp Live Chat</h3>
+					<div className="flex items-center justify-between mb-1">
+						<div className="flex items-center gap-2">
+							<MessageCircle className="size-5 text-green-500 dark:text-green-400" />
+							<h3 className="text-base lg:text-lg">WhatsApp Live Chat</h3>
+						</div>
+						<Button
+							variant="ghost"
+							size="sm"
+							className="size-8 p-0"
+							onClick={handleRefresh}
+							disabled={isRefreshing}
+							title="Refresh conversations">
+							<RefreshCw className={cn("size-4", isRefreshing && "animate-spin")} />
+						</Button>
 					</div>
 					<p className="text-xs text-zinc-500 dark:text-zinc-400">
 						{conversations.filter((c) => c.unreadCount > 0).length} unread
@@ -349,12 +996,12 @@ export function LiveChat() {
 				<ScrollArea className="flex-1 min-h-0">
 					<div className="p-2 space-y-2">
 						{error && (
-							<div className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-md p-3">
+							<div className="text-xs text-red-600 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900 rounded-md p-3">
 								{error}
 							</div>
 						)}
 
-						{isLoadingConversations && (
+						{isLoadingConversations && !isRefreshing && (
 							<div className="text-xs text-zinc-500">Loading conversations…</div>
 						)}
 
@@ -367,10 +1014,7 @@ export function LiveChat() {
 						{conversations.map((conv) => (
 							<button
 								key={conv.id}
-								onClick={() => {
-									setSelectedConversation(conv.id);
-									setShowChat(true);
-								}}
+								onClick={() => handleSelectConversation(conv.id)}
 								className={cn(
 									"w-full p-3 rounded-lg text-left transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-800/80",
 									selectedConversation === conv.id &&
@@ -379,7 +1023,7 @@ export function LiveChat() {
 								<div className="flex items-start gap-3">
 									<Avatar className="size-10 border border-zinc-300 dark:border-zinc-700 shrink-0">
 										<AvatarFallback className="bg-gradient-to-br from-green-600 to-emerald-600">
-											{getInitials(conv.clientName)}
+											<UserCircle />
 										</AvatarFallback>
 									</Avatar>
 
@@ -433,13 +1077,11 @@ export function LiveChat() {
 										<path d="m15 18-6-6 6-6" />
 									</svg>
 								</Button>
-								{selectedConv && (
-									<Avatar className="size-10 border border-zinc-300 dark:border-zinc-700 shrink-0">
-										<AvatarFallback className="bg-gradient-to-br from-green-600 to-emerald-600">
-											{getInitials(selectedConv.clientName)}
-										</AvatarFallback>
-									</Avatar>
-								)}
+								<Avatar className="size-10 border border-zinc-300 dark:border-zinc-700 shrink-0">
+									<AvatarFallback className="bg-gradient-to-br from-green-600 to-emerald-600">
+										{getInitials(selectedConv.clientName)}
+									</AvatarFallback>
+								</Avatar>
 								<div className="min-w-0 flex-1">
 									<p className="text-sm lg:text-base truncate">
 										{selectedConv?.clientName ?? "WhatsApp Contact"}
@@ -453,6 +1095,20 @@ export function LiveChat() {
 								</div>
 							</div>
 							<div className="flex items-center gap-1 shrink-0">
+								<Button
+									variant="ghost"
+									size="sm"
+									className="size-8 p-0"
+									onClick={() =>
+										selectedConversation &&
+										void fetchMessages(selectedConversation, false)
+									}
+									disabled={isLoadingMessages}
+									title="Refresh messages">
+									<RefreshCw
+										className={cn("size-4", isLoadingMessages && "animate-spin")}
+									/>
+								</Button>
 								<Button
 									variant="ghost"
 									size="sm"
@@ -473,7 +1129,7 @@ export function LiveChat() {
 						{/* Messages */}
 						<ScrollArea className="flex-1 p-3 lg:p-4 min-h-0">
 							<div className="space-y-4">
-								{isLoadingMessages && (
+								{isLoadingMessages && !isRefreshing && (
 									<p className="text-xs text-zinc-500">Fetching messages…</p>
 								)}
 
@@ -481,54 +1137,70 @@ export function LiveChat() {
 									<p className="text-xs text-zinc-500">No messages exchanged yet.</p>
 								)}
 
-								{selectedMessages.map((message) => (
+								{groupedMessages.map((group) => (
 									<div
-										key={message.id}
-										className={cn(
-											"flex gap-2 lg:gap-3",
-											message.sender === "pa" && "flex-row-reverse"
-										)}>
-										<Avatar className="size-8 shrink-0">
-											<AvatarFallback
-												className={cn(
-													message.sender === "client"
-														? "bg-gradient-to-br from-green-600 to-emerald-600"
-														: "bg-gradient-to-br from-violet-600 to-purple-600",
-													"text-xs"
-												)}>
-												{message.sender === "client"
-													? getInitials(message.clientName ?? "Client")
-													: "PA"}
-											</AvatarFallback>
-										</Avatar>
-
-										<div
-											className={cn(
-												"flex flex-col max-w-[85%] lg:max-w-md",
-												message.sender === "pa" && "items-end"
-											)}>
-											<div
-												className={cn(
-													"inline-block rounded-lg p-3 border",
-													message.sender === "client"
-														? "bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700"
-														: "bg-green-100 dark:bg-green-900/50 border-green-300 dark:border-green-800"
-												)}>
-												<p className="text-sm whitespace-pre-wrap leading-relaxed">
-													{message.content}
-												</p>
-											</div>
-											<div className="flex items-center gap-1 mt-1 px-1">
-												<span className="text-xs text-zinc-500">{message.timestamp}</span>
-												{message.sender === "pa" && getStatusIcon(message.status)}
+										key={group.date}
+										className="space-y-4">
+										{/* Date Header */}
+										<div className="flex items-center justify-center my-4">
+											<div className="px-3 py-1 bg-zinc-100 dark:bg-zinc-800 rounded-full">
+												<span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+													{group.date}
+												</span>
 											</div>
 										</div>
+
+										{/* Messages for this date */}
+										{group.messages.map((message) => (
+											<div
+												key={message.id}
+												className={cn(
+													"flex gap-2 lg:gap-3",
+													message.sender === "pa" && "flex-row-reverse"
+												)}>
+												<Avatar className="size-8 shrink-0">
+													<AvatarFallback
+														className={cn(
+															message.sender === "client"
+																? "bg-gradient-to-br from-green-600 to-emerald-600"
+																: "bg-gradient-to-br from-violet-600 to-purple-600",
+															"text-xs"
+														)}>
+														{message.sender === "client"
+															? getInitials(message.clientName ?? "Client")
+															: "PA"}
+													</AvatarFallback>
+												</Avatar>
+
+												<div
+													className={cn(
+														"flex flex-col max-w-[85%] lg:max-w-md",
+														message.sender === "pa" && "items-end"
+													)}>
+													<div
+														className={cn(
+															"inline-block rounded-lg p-3 border",
+															message.sender === "client"
+																? "bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700"
+																: "bg-green-100 dark:bg-green-900/50 border-green-300 dark:border-green-800"
+														)}>
+														<p className="text-sm whitespace-pre-wrap leading-relaxed">
+															{message.content}
+														</p>
+													</div>
+													<div className="flex items-center gap-1 mt-1 px-1">
+														<span className="text-xs text-zinc-500">{message.timestamp}</span>
+														{message.sender === "pa" && getStatusIcon(message.status)}
+													</div>
+												</div>
+											</div>
+										))}
 									</div>
 								))}
 							</div>
 						</ScrollArea>
 
-						<Separator className="bg-zinc-200 dark:bg-zinc-800" />
+						<Separator className="bg-zinc-200 dark:border-zinc-800" />
 
 						{/* Input */}
 						<div className="p-3 lg:p-4 shrink-0">
