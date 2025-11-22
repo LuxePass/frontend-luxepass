@@ -74,8 +74,10 @@ export function LiveChat() {
 	>({});
 
 	// Refs for polling intervals
-	const conversationsPollRef = useRef<NodeJS.Timeout | null>(null);
-	const messagesPollRef = useRef<NodeJS.Timeout | null>(null);
+	const conversationsPollRef = useRef<ReturnType<typeof setTimeout> | null>(
+		null
+	);
+	const messagesPollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 	const whatsappBackendBaseUrl =
 		import.meta.env.VITE_WHATSAPP_BACKEND_URL ??
