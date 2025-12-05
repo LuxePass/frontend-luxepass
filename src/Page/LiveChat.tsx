@@ -839,14 +839,37 @@ export function LiveChat() {
 	/**
 	 * Handle close chat
 	 */
-	const handleCloseChat = () => {
+	const handleCloseChat = async () => {
 		if (!selectedConversation) return;
 
 		const conv = conversations.find((c) => c.id === selectedConversation);
-		if (conv) {
+		if (!conv) return;
+
+		try {
+			// Call backend to end live chat session
+			const response = await fetch(
+				`${whatsappBackendBaseUrl}/livechat/${conv.clientPhone}/end`,
+				{
+					method: "POST",
+					headers: backendHeaders,
+				}
+			);
+
+			if (!response.ok) {
+				const body = await response.json().catch(() => ({}));
+				throw new Error(body?.error || "Failed to end live chat session");
+			}
+
 			customToast.success({
-				title: "Chat Closed",
-				description: `Conversation with ${conv.clientName} has been closed`,
+				title: "Chat Ended",
+				description: `Live chat with ${conv.clientName} has been ended. User can now access the menu.`,
+			});
+		} catch (error) {
+			console.error("Error ending live chat:", error);
+			customToast.error({
+				title: "Error",
+				description:
+					error instanceof Error ? error.message : "Failed to end live chat session",
 			});
 		}
 
@@ -1112,18 +1135,20 @@ export function LiveChat() {
 									/>
 								</Button>
 								<Button
-									variant="ghost"
+									variant="outline"
 									size="sm"
-									className="hidden lg:flex size-8 p-0 hover:bg-red-100 dark:hover:bg-red-950/50 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+									className="hidden lg:flex h-8 px-3 text-xs bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950/50 transition-colors"
 									onClick={handleCloseChat}
-									title="Close Chat">
-									<X className="size-4" />
+									title="End live chat session and return user to menu">
+									End Live Chat
 								</Button>
 								<Button
 									variant="ghost"
 									size="sm"
-									className="size-8 p-0">
-									<MoreVertical className="size-4" />
+									className="hidden lg:flex size-8 p-0"
+									onClick={() => setShowChat(false)}
+									title="Close chat window (doesn't end session)">
+									<X className="size-4" />
 								</Button>
 							</div>
 						</div>
@@ -1183,8 +1208,8 @@ export function LiveChat() {
 														className={cn(
 															"inline-block rounded-lg p-3 border",
 															message.sender === "client"
-																? "bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700"
-																: "bg-green-100 dark:bg-green-900/50 border-green-300 dark:border-green-800"
+																? "bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100"
+																: "bg-green-600 dark:bg-green-700 border-green-700 dark:border-green-800 text-white"
 														)}>
 														<p className="text-sm whitespace-pre-wrap leading-relaxed">
 															{message.content}
