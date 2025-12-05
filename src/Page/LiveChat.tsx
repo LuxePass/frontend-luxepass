@@ -78,64 +78,7 @@ export function LiveChat() {
 		null
 	);
 	const messagesPollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-	const whatsappBackendBaseUrl =
-		import.meta.env.VITE_WHATSAPP_BACKEND_URL ??
-		"https://whatsapp-backend-ix4v.onrender.com/api";
-
-	const backendHeaders = useMemo(
-		() => ({
-			"Content-Type": "application/json",
-		}),
-		[]
-	);
-
-	/**
-	 * Normalize timestamp to time string (HH:MM format)
-	 */
-	const normalizeTimestamp = useCallback(
-		(timestamp?: string | number | Date) => {
-			if (!timestamp) return "";
-
-			let date: Date;
-
-			if (timestamp instanceof Date) {
-				date = timestamp;
-			} else if (typeof timestamp === "string") {
-				// Try parsing ISO string first
-				date = new Date(timestamp);
-				// If invalid, try parsing as number
-				if (isNaN(date.getTime())) {
-					const numericTs = Number(timestamp);
-					if (!isNaN(numericTs)) {
-						date =
-							numericTs < 10_000_000_000
-								? new Date(numericTs * 1000)
-								: new Date(numericTs);
-					} else {
-						return "";
-					}
-				}
-			} else {
-				// Number timestamp
-				const numericTs = timestamp;
-				date =
-					numericTs < 10_000_000_000
-						? new Date(numericTs * 1000)
-						: new Date(numericTs);
-			}
-
-			if (isNaN(date.getTime())) {
-				return "";
-			}
-
-			return date.toLocaleTimeString("en-US", {
-				hour: "2-digit",
-				minute: "2-digit",
-			});
-		},
-		[]
-	);
+	const messagesEndRef = useRef<HTMLDivElement>(null);
 
 	/**
 	 * Get date label for message grouping (Today, Yesterday, or date)
@@ -198,9 +141,6 @@ export function LiveChat() {
 		[]
 	);
 
-	/**
-	 * Group messages by date
-	 */
 	const groupMessagesByDate = useCallback(
 		(
 			messages: ChatMessage[]
@@ -255,6 +195,78 @@ export function LiveChat() {
 		},
 		[getDateLabel]
 	);
+
+	const whatsappBackendBaseUrl =
+		import.meta.env.VITE_WHATSAPP_BACKEND_URL ??
+		"https://whatsapp-backend-ix4v.onrender.com/api";
+
+	const backendHeaders = useMemo(
+		() => ({
+			"Content-Type": "application/json",
+		}),
+		[]
+	);
+
+	const selectedConv = conversations.find((c) => c.id === selectedConversation);
+	const selectedMessages = selectedConversation
+		? messages[selectedConversation] ?? []
+		: [];
+
+	// Group messages by date
+	const groupedMessages = useMemo(() => {
+		if (selectedMessages.length === 0) return [];
+		return groupMessagesByDate(selectedMessages);
+	}, [selectedMessages, groupMessagesByDate]);
+	/**
+	 * Normalize timestamp to time string (HH:MM format)
+	 */
+	const normalizeTimestamp = useCallback(
+		(timestamp?: string | number | Date) => {
+			if (!timestamp) return "";
+
+			let date: Date;
+
+			if (timestamp instanceof Date) {
+				date = timestamp;
+			} else if (typeof timestamp === "string") {
+				// Try parsing ISO string first
+				date = new Date(timestamp);
+				// If invalid, try parsing as number
+				if (isNaN(date.getTime())) {
+					const numericTs = Number(timestamp);
+					if (!isNaN(numericTs)) {
+						date =
+							numericTs < 10_000_000_000
+								? new Date(numericTs * 1000)
+								: new Date(numericTs);
+					} else {
+						return "";
+					}
+				}
+			} else {
+				// Number timestamp
+				const numericTs = timestamp;
+				date =
+					numericTs < 10_000_000_000
+						? new Date(numericTs * 1000)
+						: new Date(numericTs);
+			}
+
+			if (isNaN(date.getTime())) {
+				return "";
+			}
+
+			return date.toLocaleTimeString("en-US", {
+				hour: "2-digit",
+				minute: "2-digit",
+			});
+		},
+		[]
+	);
+
+	/**
+	 * Group messages by date
+	 */
 
 	/**
 	 * Normalize phone number to digits only (backend requirement)
@@ -935,8 +947,23 @@ export function LiveChat() {
 	useEffect(() => {
 		if (selectedConversation) {
 			void fetchMessages(selectedConversation, false);
+			// Mark conversation as read when viewing
+			void fetch(
+				`${whatsappBackendBaseUrl}/conversations/${selectedConversation}/read`,
+				{
+					method: "POST",
+					headers: backendHeaders,
+				}
+			).catch((err) => console.error("Error marking as read:", err));
 		}
 	}, [selectedConversation]); // eslint-disable-line react-hooks/exhaustive-deps
+
+	// Auto-scroll to latest message
+	useEffect(() => {
+		if (messagesEndRef.current) {
+			messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+		}
+	}, [selectedMessages]);
 
 	const getInitials = (name: string) => {
 		return name
@@ -975,17 +1002,6 @@ export function LiveChat() {
 				return <Clock className="size-3 text-zinc-500 dark:text-zinc-400" />;
 		}
 	};
-
-	const selectedConv = conversations.find((c) => c.id === selectedConversation);
-	const selectedMessages = selectedConversation
-		? messages[selectedConversation] ?? []
-		: [];
-
-	// Group messages by date
-	const groupedMessages = useMemo(() => {
-		if (selectedMessages.length === 0) return [];
-		return groupMessagesByDate(selectedMessages);
-	}, [selectedMessages, groupMessagesByDate]);
 
 	return (
 		<Card className="h-full flex flex-col lg:flex-row bg-white dark:bg-zinc-900/50 border-zinc-200 dark:border-zinc-800 overflow-hidden">
@@ -1224,39 +1240,44 @@ export function LiveChat() {
 										))}
 									</div>
 								))}
+								{/* Auto-scroll anchor */}
+								<div ref={messagesEndRef} />
 							</div>
 						</ScrollArea>
 
 						<Separator className="bg-zinc-200 dark:border-zinc-800" />
 
-						{/* Input */}
-						<div className="p-3 lg:p-4 shrink-0">
-							<div className="flex gap-2">
-								<Input
-									placeholder="Type your message..."
-									value={inputMessage}
-									disabled={isSending}
-									onChange={(e) => setInputMessage(e.target.value)}
-									onKeyDown={(e) => {
-										if (e.key === "Enter" && !e.shiftKey) {
-											e.preventDefault();
-											void handleSendMessage();
-										}
-									}}
-									className="bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700 text-sm"
-								/>
-								<Button
-									onClick={() => void handleSendMessage()}
-									disabled={!inputMessage.trim() || isSending}
-									className="bg-green-600 hover:bg-green-700 shrink-0 size-9 lg:size-10 p-0">
-									<Send className="size-4" />
-								</Button>
+						{/* Input - Only show if user has requested live support */}
+						{selectedConv && (
+							<div className="p-3 lg:p-4 shrink-0">
+								{/* Check if this is a live support conversation - you may need to add this field to your conversation data */}
+								<div className="flex gap-2">
+									<Input
+										placeholder="Type your message..."
+										value={inputMessage}
+										disabled={isSending}
+										onChange={(e) => setInputMessage(e.target.value)}
+										onKeyDown={(e) => {
+											if (e.key === "Enter" && !e.shiftKey) {
+												e.preventDefault();
+												void handleSendMessage();
+											}
+										}}
+										className="bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700 text-sm"
+									/>
+									<Button
+										onClick={() => void handleSendMessage()}
+										disabled={!inputMessage.trim() || isSending}
+										className="bg-green-600 hover:bg-green-700 shrink-0 size-9 lg:size-10 p-0">
+										<Send className="size-4" />
+									</Button>
+								</div>
+								<p className="text-xs text-zinc-500 mt-2 flex items-center gap-1">
+									<MessageCircle className="size-3 text-green-500" />
+									Messages sent via WhatsApp Business API
+								</p>
 							</div>
-							<p className="text-xs text-zinc-500 mt-2 flex items-center gap-1">
-								<MessageCircle className="size-3 text-green-500" />
-								Messages sent via WhatsApp Business API
-							</p>
-						</div>
+						)}
 					</>
 				) : (
 					<div className="flex-1 flex items-center justify-center p-8">
