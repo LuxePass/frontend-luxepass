@@ -182,15 +182,15 @@ export function LiveChat() {
 			return Array.from(groups.entries())
 				.map(([date, msgs]) => ({ date, messages: msgs }))
 				.sort((a, b) => {
-					// Sort dates: Today first, then Yesterday, then older dates
-					if (a.date === "Today") return -1;
-					if (b.date === "Today") return 1;
-					if (a.date === "Yesterday") return -1;
-					if (b.date === "Yesterday") return 1;
-					// For older dates, compare the actual dates
+					// Sort dates: Older dates first, then Yesterday, then Today
+					if (a.date === "Today") return 1;
+					if (b.date === "Today") return -1;
+					if (a.date === "Yesterday") return 1;
+					if (b.date === "Yesterday") return -1;
+					// For older dates, compare the actual dates (Ascending)
 					const dateA = new Date(a.messages[0]?.timestampValue || 0);
 					const dateB = new Date(b.messages[0]?.timestampValue || 0);
-					return dateB.getTime() - dateA.getTime();
+					return dateA.getTime() - dateB.getTime();
 				});
 		},
 		[getDateLabel]
