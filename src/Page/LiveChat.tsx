@@ -31,6 +31,7 @@ interface ChatMessage {
 	timestampValue?: number; // Numeric timestamp for sorting/grouping
 	status: "sent" | "delivered" | "read" | "received";
 	platform: "whatsapp";
+	isBot?: boolean;
 }
 
 interface ChatConversation {
@@ -49,6 +50,7 @@ type ConversationApiItem = Partial<ChatConversation> & {
 
 type MessageApiItem = Partial<ChatMessage> & {
 	timestampValue?: string | number;
+	isBot?: boolean;
 };
 
 // Polling intervals (in milliseconds)
@@ -557,6 +559,7 @@ export function LiveChat() {
 						timestampValue: timestampValue,
 						status: msg.status ?? "sent",
 						platform: msg.platform ?? "whatsapp",
+						isBot: msg.isBot,
 					};
 				});
 
@@ -1206,11 +1209,15 @@ export function LiveChat() {
 														className={cn(
 															message.sender === "client"
 																? "bg-gradient-to-br from-green-600 to-emerald-600"
+																: message.isBot
+																? "bg-zinc-500 dark:bg-zinc-600"
 																: "bg-gradient-to-br from-violet-600 to-purple-600",
 															"text-xs"
 														)}>
 														{message.sender === "client"
 															? getInitials(message.clientName ?? "Client")
+															: message.isBot
+															? "SYS"
 															: "PA"}
 													</AvatarFallback>
 												</Avatar>
@@ -1225,8 +1232,15 @@ export function LiveChat() {
 															"inline-block rounded-lg p-3 border",
 															message.sender === "client"
 																? "bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100"
+																: message.isBot
+																? "bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-500 italic"
 																: "bg-green-600 dark:bg-green-700 border-green-700 dark:border-green-800 text-white"
 														)}>
+														{message.isBot && (
+															<div className="flex items-center gap-1 mb-1 text-xs font-medium uppercase tracking-wider opacity-70">
+																<span>System Auto-Reply</span>
+															</div>
+														)}
 														<p className="text-sm whitespace-pre-wrap leading-relaxed">
 															{message.content}
 														</p>
