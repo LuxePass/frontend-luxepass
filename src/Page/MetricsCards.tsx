@@ -1,60 +1,93 @@
+import { useEffect } from "react";
+import { useUsers } from "../hooks/useUsers";
+import { useBookings } from "../hooks/useBookings";
 import { Card } from "../components/ui/card";
 import {
 	CheckCircle2,
 	Clock,
 	TrendingUp,
-	Users,
+	Users as UsersIcon,
 	ArrowUp,
 	ArrowDown,
 } from "lucide-react";
 import { cn } from "../utils";
 
-interface Metric {
-	label: string;
-	value: string;
-	change: number;
-	icon: React.ElementType;
-	iconColor: string;
-}
-
-const metrics: Metric[] = [
-	{
-		label: "Tasks Completed Today",
-		value: "24",
-		change: 12.5,
-		icon: CheckCircle2,
-		iconColor: "text-green-400",
-	},
-	{
-		label: "Avg Response Time",
-		value: "8 min",
-		change: -15.3,
-		icon: Clock,
-		iconColor: "text-blue-400",
-	},
-	{
-		label: "Client Satisfaction",
-		value: "98%",
-		change: 2.1,
-		icon: TrendingUp,
-		iconColor: "text-violet-400",
-	},
-	{
-		label: "Active Clients",
-		value: "47",
-		change: 5.2,
-		icon: Users,
-		iconColor: "text-orange-400",
-	},
-];
-
 export function MetricsCards() {
+	const { users, getAssignedUsers } = useUsers();
+	const { bookings, getBookings } = useBookings();
+
+	useEffect(() => {
+		const fetchDashboardData = async () => {
+			try {
+				await getAssignedUsers();
+			} catch (error: unknown) {
+				// Silently handle permission errors - the hook already sets error state
+				const err = error as { response?: { status?: number } };
+				if (err?.response?.status === 403) {
+					console.warn("Permission denied for assigned users");
+				}
+			}
+
+			try {
+				await getBookings();
+			} catch (error: unknown) {
+				// Silently handle permission errors - the hook already sets error state
+				const err = error as { response?: { status?: number } };
+				if (err?.response?.status === 403) {
+					console.warn("Permission denied for bookings");
+				}
+			}
+		};
+
+		fetchDashboardData();
+	}, [getAssignedUsers, getBookings]);
+
+	const pendingBookings = bookings.filter((b) => b.status === "INQUIRY").length;
+	const confirmedBookings = bookings.filter(
+		(b) => b.status === "CONFIRMED"
+	).length;
+	const totalRevenue = bookings
+		.filter((b) => b.status === "CONFIRMED")
+		.reduce((sum, b) => sum + parseFloat(b.totalAmount), 0);
+
+	const metrics = [
+		{
+			label: "Assigned Clients",
+			value: users.length.toString(),
+			change: 5.2,
+			icon: UsersIcon,
+			iconColor: "text-orange-400",
+		},
+		{
+			label: "Pending Inquiries",
+			value: pendingBookings.toString(),
+			change: -15.3,
+			icon: Clock,
+			iconColor: "text-blue-400",
+		},
+		{
+			label: "Confirmed Bookings",
+			value: confirmedBookings.toString(),
+			change: 12.5,
+			icon: CheckCircle2,
+			iconColor: "text-green-400",
+		},
+		{
+			label: "Estimated Revenue",
+			value: "₦" + totalRevenue.toLocaleString(),
+			change: 2.1,
+			icon: TrendingUp,
+			iconColor: "text-violet-400",
+		},
+	];
+
 	return (
 		<div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
 			{metrics.map((metric) => {
 				const Icon = metric.icon;
 				const isPositive = metric.change > 0;
-				const isNegativeGood = metric.label.includes("Response Time");
+				const isNegativeGood =
+					metric.label.includes("Response Time") || metric.label.includes("Pending");
 				const showPositive = isNegativeGood ? !isPositive : isPositive;
 
 				return (
@@ -88,7 +121,7 @@ export function MetricsCards() {
 							<p className="text-zinc-500 dark:text-zinc-400 text-xs mb-1 line-clamp-2">
 								{metric.label}
 							</p>
-							<p className="text-2xl lg:text-2xl">{metric.value}</p>
+							<p className="text-xl lg:text-2xl font-bold truncate">{metric.value}</p>
 						</div>
 					</Card>
 				);

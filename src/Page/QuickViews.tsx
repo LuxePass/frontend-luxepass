@@ -1,6 +1,11 @@
+import { useEffect, useMemo } from "react";
 import { Card } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { ScrollArea } from "../components/ui/scroll-area";
+import { useBookings } from "../hooks/useBookings";
+import { useChat } from "../hooks/useChat";
+import { useTransfers } from "../hooks/useTransfers";
+import { useListings } from "../hooks/useListings";
 import {
 	ListTodo,
 	MessageCircle,
@@ -27,82 +32,127 @@ export function QuickViews({
 	onListingsClick,
 	onReferralsClick,
 }: QuickViewsProps) {
-	const quickViewItems = [
-		{
-			title: "Task Queue",
-			description: "5 urgent tasks pending",
-			icon: ListTodo,
-			iconColor: "text-violet-600 dark:text-violet-400",
-			bgColor: "bg-violet-100 dark:bg-violet-950/50",
-			borderColor: "border-violet-200 dark:border-violet-900",
-			onClick: onTasksClick,
-			badge: { text: "5", color: "bg-violet-600" },
-			items: [
-				{ text: "Restaurant reservation for Sarah", time: "2h ago", urgent: true },
-				{ text: "Property viewing schedule", time: "4h ago", urgent: false },
-				{ text: "Gift delivery confirmation", time: "5h ago", urgent: true },
-			],
-		},
-		{
-			title: "WhatsApp Live Chat",
-			description: "3 active conversations",
-			icon: MessageCircle,
-			iconColor: "text-green-600 dark:text-green-400",
-			bgColor: "bg-green-100 dark:bg-green-950/50",
-			borderColor: "border-green-200 dark:border-green-900",
-			onClick: onChatClick,
-			badge: { text: "3", color: "bg-green-600" },
-			items: [
-				{ text: "Sarah Chen - New message", time: "Just now", urgent: true },
-				{ text: "Marcus Johnson - Typing...", time: "1m ago", urgent: false },
-				{ text: "Elena Rodriguez - Waiting", time: "15m ago", urgent: false },
-			],
-		},
-		{
-			title: "Transfer Override",
-			description: "2 pending approvals",
-			icon: ShieldAlert,
-			iconColor: "text-orange-600 dark:text-orange-400",
-			bgColor: "bg-orange-100 dark:bg-orange-950/50",
-			borderColor: "border-orange-200 dark:border-orange-900",
-			onClick: onTransferClick,
-			badge: { text: "2", color: "bg-orange-600" },
-			items: [
-				{ text: "Wire transfer - ₦50,000,000", time: "Pending", urgent: true },
-				{ text: "International payment", time: "Review", urgent: true },
-			],
-		},
-		{
-			title: "Listing Management",
-			description: "12 active listings",
-			icon: Building2,
-			iconColor: "text-blue-600 dark:text-blue-400",
-			bgColor: "bg-blue-100 dark:bg-blue-950/50",
-			borderColor: "border-blue-200 dark:border-blue-900",
-			onClick: onListingsClick,
-			badge: { text: "12", color: "bg-blue-600" },
-			items: [
-				{ text: "Penthouse NYC - Vetted", time: "Active", urgent: false },
-				{ text: "Villa Malibu - Pending vet", time: "Review", urgent: true },
-				{ text: "Condo Miami - Listed", time: "Active", urgent: false },
-			],
-		},
-		{
-			title: "Referral Program",
-			description: "8 new referrals this week",
-			icon: Users,
-			iconColor: "text-indigo-600 dark:text-indigo-400",
-			bgColor: "bg-indigo-100 dark:bg-indigo-950/50",
-			borderColor: "border-indigo-200 dark:border-indigo-900",
-			onClick: onReferralsClick,
-			badge: { text: "8", color: "bg-indigo-600" },
-			items: [
-				{ text: "Lisa → Sarah - ₦500,000 earned", time: "Today", urgent: false },
-				{ text: "Marcus → David - Pending", time: "Yesterday", urgent: false },
-				{ text: "Elena → 2 referrals", time: "This week", urgent: false },
-			],
-		},
-	];
+	const { bookings, getBookings, loading: loadingBookings } = useBookings();
+	const { conversations, fetchConversations, loading: loadingChat } = useChat();
+	const { transfers, getTransfers, loading: loadingTransfers } = useTransfers();
+	const { listings, getListings, loading: loadingListings } = useListings();
+
+	useEffect(() => {
+		getBookings();
+		fetchConversations();
+		getTransfers();
+		getListings();
+	}, [getBookings, fetchConversations, getTransfers, getListings]);
+
+	const pendingInquiries = useMemo(
+		() => bookings.filter((b) => b.status === "INQUIRY"),
+		[bookings]
+	);
+
+	const pendingTransfers = useMemo(
+		() => transfers.filter((t) => t.status === "PENDING"),
+		[transfers]
+	);
+
+	const activeListings = useMemo(
+		() => listings.filter((l) => l.isActive),
+		[listings]
+	);
+
+	const quickViewItems = useMemo(
+		() => [
+			{
+				title: "Task Queue",
+				description: `${pendingInquiries.length} urgent tasks pending`,
+				icon: ListTodo,
+				iconColor: "text-violet-600 dark:text-violet-400",
+				bgColor: "bg-violet-100 dark:bg-violet-950/50",
+				borderColor: "border-violet-200 dark:border-violet-900",
+				onClick: onTasksClick,
+				badge: { text: pendingInquiries.length.toString(), color: "bg-violet-600" },
+				items: pendingInquiries.slice(0, 3).map((task) => ({
+					text: `${task.type} booking - ${task.currency} ${parseFloat(
+						task.totalAmount
+					).toLocaleString()}`,
+					time: new Date(task.createdAt).toLocaleDateString(),
+					urgent: true,
+				})),
+			},
+			{
+				title: "WhatsApp Live Chat",
+				description: `${conversations.length} active conversations`,
+				icon: MessageCircle,
+				iconColor: "text-green-600 dark:text-green-400",
+				bgColor: "bg-green-100 dark:bg-green-950/50",
+				borderColor: "border-green-200 dark:border-green-900",
+				onClick: onChatClick,
+				badge: { text: conversations.length.toString(), color: "bg-green-600" },
+				items: conversations.slice(0, 3).map((conv) => ({
+					text: `${conv.clientName}: ${conv.lastMessage}`,
+					time: conv.lastMessageTime || "Just now",
+					urgent: conv.unreadCount > 0,
+				})),
+			},
+			{
+				title: "Transfer Override",
+				description: `${pendingTransfers.length} pending approvals`,
+				icon: ShieldAlert,
+				iconColor: "text-orange-600 dark:text-orange-400",
+				bgColor: "bg-orange-100 dark:bg-orange-950/50",
+				borderColor: "border-orange-200 dark:border-orange-900",
+				onClick: onTransferClick,
+				badge: { text: pendingTransfers.length.toString(), color: "bg-orange-600" },
+				items: pendingTransfers.slice(0, 3).map((transfer) => ({
+					text: `Transfer - ${transfer.currency} ${parseFloat(
+						transfer.amount
+					).toLocaleString()}`,
+					time: "Pending",
+					urgent: true,
+				})),
+			},
+			{
+				title: "Listing Management",
+				description: `${activeListings.length} active listings`,
+				icon: Building2,
+				iconColor: "text-blue-600 dark:text-blue-400",
+				bgColor: "bg-blue-100 dark:bg-blue-950/50",
+				borderColor: "border-blue-200 dark:border-blue-900",
+				onClick: onListingsClick,
+				badge: { text: activeListings.length.toString(), color: "bg-blue-600" },
+				items: activeListings.slice(0, 3).map((listing) => ({
+					text: `${listing.name} - ${listing.city}`,
+					time: listing.isActive ? "Active" : "Inactive",
+					urgent: listing.vettingStatus === "PENDING",
+				})),
+			},
+			{
+				title: "Referral Program",
+				description: "8 new referrals this week",
+				icon: Users,
+				iconColor: "text-indigo-600 dark:text-indigo-400",
+				bgColor: "bg-indigo-100 dark:bg-indigo-950/50",
+				borderColor: "border-indigo-200 dark:border-indigo-900",
+				onClick: onReferralsClick,
+				badge: { text: "8", color: "bg-indigo-600" },
+				items: [
+					{ text: "Lisa → Sarah - ₦500,000 earned", time: "Today", urgent: false },
+					{ text: "Marcus → David - Pending", time: "Yesterday", urgent: false },
+					{ text: "Elena → 2 referrals", time: "This week", urgent: false },
+				],
+			},
+		],
+		[
+			pendingInquiries,
+			conversations,
+			pendingTransfers,
+			activeListings,
+			onTasksClick,
+			onChatClick,
+			onTransferClick,
+			onListingsClick,
+			onReferralsClick,
+		]
+	);
 
 	return (
 		<ScrollArea className="h-full">

@@ -1,12 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ScrollArea } from "../components/ui/scroll-area";
 import { Badge } from "../components/ui/badge";
 import { Avatar, AvatarFallback } from "../components/ui/avatar";
 import { AdminProfile } from "./AdminProfile";
+import { useUsers } from "../hooks/useUsers";
 import {
 	Users,
-	LayoutDashboard,
-	Wallet,
 	Wrench,
 	MessageCircle,
 	ListTodo,
@@ -15,126 +14,16 @@ import {
 	Network,
 	ChevronRight,
 	ChevronDown,
-	User,
 	Globe,
+	ShieldCheck,
+	Activity,
+	User,
+	LayoutDashboard,
+	Wallet,
+	Calendar,
 } from "lucide-react";
+import { useAuth } from "../hooks/useAuth";
 import { cn } from "../utils";
-
-interface Client {
-	id: string;
-	name: string;
-	lastInteraction: string;
-	unreadCount: number;
-	status: "active" | "pending" | "archived";
-	interactions: {
-		date: string;
-		type: string;
-		summary: string;
-	}[];
-}
-
-const mockClients: Client[] = [
-	{
-		id: "1",
-		name: "Chidinma Okonkwo",
-		lastInteraction: "2 min ago",
-		unreadCount: 3,
-		status: "active",
-		interactions: [
-			{
-				date: "2025-10-19 14:30",
-				type: "Email",
-				summary: "Restaurant reservation at Nok by Alara",
-			},
-			{
-				date: "2025-10-19 09:15",
-				type: "Phone",
-				summary: "Travel itinerary to Banana Island",
-			},
-			{
-				date: "2025-10-18 16:45",
-				type: "Message",
-				summary: "Gift delivery to Ikoyi",
-			},
-		],
-	},
-	{
-		id: "2",
-		name: "Emeka Adeleke",
-		lastInteraction: "1 hour ago",
-		unreadCount: 0,
-		status: "active",
-		interactions: [
-			{
-				date: "2025-10-19 13:00",
-				type: "Email",
-				summary: "Property viewing in Lekki Phase 1",
-			},
-			{
-				date: "2025-10-18 11:20",
-				type: "Message",
-				summary: "Event planning at Eko Hotel",
-			},
-		],
-	},
-	{
-		id: "3",
-		name: "Amara Nwosu",
-		lastInteraction: "3 hours ago",
-		unreadCount: 1,
-		status: "pending",
-		interactions: [
-			{
-				date: "2025-10-19 11:30",
-				type: "Message",
-				summary: "Private jet booking inquiry",
-			},
-			{
-				date: "2025-10-17 14:00",
-				type: "Phone",
-				summary: "Membership tier upgrade",
-			},
-		],
-	},
-	{
-		id: "4",
-		name: "Chukwudi Okafor",
-		lastInteraction: "Yesterday",
-		unreadCount: 0,
-		status: "active",
-		interactions: [
-			{
-				date: "2025-10-18 18:30",
-				type: "Email",
-				summary: "Wine collection delivery to Victoria Island",
-			},
-			{
-				date: "2025-10-17 10:00",
-				type: "Message",
-				summary: "Personal shopping at The Palms",
-			},
-		],
-	},
-	{
-		id: "5",
-		name: "Ngozi Adekunle",
-		lastInteraction: "Yesterday",
-		unreadCount: 2,
-		status: "active",
-		interactions: [
-			{
-				date: "2025-10-18 15:00",
-				type: "Phone",
-				summary: "Art gallery access at Nike Art Centre",
-			},
-			{
-				date: "2025-10-16 12:30",
-				type: "Email",
-				summary: "Yacht charter pricing for Lagos Lagoon",
-			},
-		],
-	},
-];
 
 const toolItems = [
 	{ id: "tasks", label: "Tasks", icon: ListTodo },
@@ -160,21 +49,22 @@ export function Sidebar({
 	onSelectClient,
 	searchQuery,
 	onClose,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	isMobile,
 	isDesktop,
 	onLogout,
 	onNavigate,
 	activeTab,
 }: SidebarProps) {
+	const { user } = useAuth();
+	const { users, getAssignedUsers } = useUsers();
 	const [clientsExpanded, setClientsExpanded] = useState(false);
 	const [toolsExpanded, setToolsExpanded] = useState(false);
 
-	const filteredClients = mockClients.filter((client) =>
-		client.name.toLowerCase().includes(searchQuery?.toLowerCase() || "")
-	);
+	useEffect(() => {
+		getAssignedUsers({ search: searchQuery });
+	}, [getAssignedUsers, searchQuery]);
 
 	const getInitials = (name: string) => {
+		if (!name) return "U";
 		return name
 			.split(" ")
 			.map((n) => n[0])
@@ -194,10 +84,9 @@ export function Sidebar({
 				id: "clients",
 				label: "Clients",
 				icon: Users,
-				badge: filteredClients.length,
+				badge: users.length,
 				expandable: true,
 			},
-			{ id: "wallet", label: "Wallet", icon: Wallet },
 			{ id: "browser", label: "Browser", icon: Globe },
 			{
 				id: "tools",
@@ -208,21 +97,28 @@ export function Sidebar({
 			{ id: "referrals", label: "Referrals", icon: Network },
 		];
 
+		if (user?.role === "SUPER_ADMIN" || user?.role === "ADMIN") {
+			navigationItems.push(
+				{ id: "bookings", label: "Bookings", icon: Calendar },
+				{ id: "audit-logs", label: "Audit Logs", icon: Activity },
+				{ id: "permissions", label: "PA Permissions", icon: ShieldCheck },
+				{ id: "pa-management", label: "PA Management", icon: Users }
+			);
+		}
+
 		return (
 			<div className="w-64 border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex flex-col h-full">
 				{/* Header */}
 				<div className="h-16 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between px-4 shrink-0">
 					<div className="flex items-center gap-2">
-						<div
-							className="p-2 rounded-lg" /*className="bg-gradient-to-br from-violet-600 to-purple-600"*/
-						>
+						<div className="p-2 rounded-lg">
 							<img
 								src="/vite.svg"
 								alt="Luxepass Logo"
 								className="w-6 h-6 object-contain"
 							/>
 						</div>
-						<h2 className="text-sm">Luxepass PA</h2>
+						<h2 className="text-sm font-semibold">Luxepass PA</h2>
 					</div>
 				</div>
 
@@ -258,7 +154,7 @@ export function Sidebar({
 										{item.badge !== undefined && !isClientsSection && (
 											<Badge
 												variant="secondary"
-												className="bg-zinc-200 dark:bg-zinc-700 text-xs">
+												className="bg-zinc-200 dark:bg-zinc-700 text-xs text-zinc-900 dark:text-zinc-100 border-none">
 												{item.badge}
 											</Badge>
 										)}
@@ -266,7 +162,7 @@ export function Sidebar({
 											<div className="flex items-center gap-1">
 												<Badge
 													variant="secondary"
-													className="bg-zinc-200 dark:bg-zinc-700 text-xs">
+													className="bg-zinc-200 dark:bg-zinc-700 text-xs text-zinc-900 dark:text-zinc-100 border-none">
 													{item.badge}
 												</Badge>
 												{clientsExpanded ? (
@@ -287,41 +183,41 @@ export function Sidebar({
 									{/* Client List (shown when Clients is expanded) */}
 									{isClientsSection && clientsExpanded && (
 										<div className="ml-4 mt-1 space-y-1">
-											{filteredClients.map((client) => (
+											{users.map((client) => (
 												<button
 													key={client.id}
 													onClick={() => {
 														onSelectClient(client.id);
-														onNavigate?.("clientdetails");
 													}}
 													className={cn(
 														"w-full p-2.5 rounded-lg text-left transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-800",
 														selectedClient === client.id &&
-															"bg-zinc-100 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700"
+															"bg-zinc-100 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 font-medium"
 													)}>
 													<div className="flex items-center gap-2">
-														<Avatar className="size-8 border border-zinc-300 dark:border-zinc-700">
-															<AvatarFallback className="bg-gradient-to-br from-violet-600 to-purple-600 text-xs">
+														<Avatar className="size-8 border border-zinc-200 dark:border-zinc-700">
+															<AvatarFallback className="bg-gradient-to-br from-violet-600 to-purple-600 text-white text-xs">
 																{getInitials(client.name)}
 															</AvatarFallback>
 														</Avatar>
 
 														<div className="flex-1 min-w-0">
 															<div className="flex items-center justify-between mb-0.5">
-																<p className="text-xs truncate">{client.name}</p>
-																{client.unreadCount > 0 && (
-																	<Badge className="bg-violet-600 text-white text-[10px] h-4 px-1.5 ml-1">
-																		{client.unreadCount}
-																	</Badge>
-																)}
+																<p className="text-xs truncate font-medium">{client.name}</p>
+																{/* unreadCount placeholder */}
 															</div>
-															<p className="text-[10px] text-zinc-500 dark:text-zinc-400 truncate">
-																{client.lastInteraction}
+															<p className="text-[10px] text-zinc-500 dark:text-zinc-400 truncate uppercase tracking-tighter">
+																{client.tier} • {client.status}
 															</p>
 														</div>
 													</div>
 												</button>
 											))}
+											{users.length === 0 && (
+												<p className="text-[10px] text-zinc-500 px-3 py-2 italic text-center">
+													No users found
+												</p>
+											)}
 										</div>
 									)}
 
@@ -339,7 +235,7 @@ export function Sidebar({
 														className={cn(
 															"w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-800",
 															isToolActive &&
-																"bg-violet-100 dark:bg-violet-950/50 text-violet-600 dark:text-violet-400"
+																"bg-violet-100 dark:bg-violet-950/50 text-violet-600 dark:text-violet-400 font-medium"
 														)}>
 														<ToolIcon className="size-4 shrink-0" />
 														<span className="flex-1 text-left">{tool.label}</span>
@@ -373,12 +269,18 @@ export function Sidebar({
 			id: "clients",
 			label: "Clients",
 			icon: Users,
-			badge: filteredClients.length,
+			badge: users.length,
 		},
-		{ id: "wallet", label: "Wallet", icon: Wallet },
 		{ id: "browser", label: "Browser", icon: Globe },
 		{ id: "referrals", label: "Referrals", icon: Network },
 	];
+
+	if (user?.role === "SUPER_ADMIN" || user?.role === "ADMIN") {
+		mobileNavigationItems.push(
+			{ id: "audit-logs", label: "Audit Logs", icon: Activity },
+			{ id: "permissions", label: "PA Permissions", icon: ShieldCheck }
+		);
+	}
 
 	return (
 		<div className="flex flex-col h-full bg-white dark:bg-zinc-900">
@@ -388,7 +290,7 @@ export function Sidebar({
 					<div className="p-2 rounded-lg bg-gradient-to-br from-violet-600 to-purple-600">
 						<User className="size-4 text-white" />
 					</div>
-					<h2>Menu</h2>
+					<h2 className="font-semibold">Menu</h2>
 				</div>
 			</div>
 
@@ -417,7 +319,7 @@ export function Sidebar({
 								{item.badge !== undefined && (
 									<Badge
 										variant="secondary"
-										className="bg-zinc-200 dark:bg-zinc-700">
+										className="bg-zinc-200 dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 border-none">
 										{item.badge}
 									</Badge>
 								)}

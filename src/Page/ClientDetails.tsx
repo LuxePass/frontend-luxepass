@@ -1,3 +1,6 @@
+import { useState, useEffect, useMemo } from "react";
+import { useUsers, type User as ApiUser } from "../hooks/useUsers";
+import { useBookings, type Booking } from "../hooks/useBookings";
 import { Card } from "../components/ui/card";
 import { Avatar, AvatarFallback } from "../components/ui/avatar";
 import { Badge } from "../components/ui/badge";
@@ -19,7 +22,9 @@ import {
 	AlertCircle,
 	Target,
 	X,
+	Wallet as WalletIcon,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 interface ClientDetailsProps {
 	clientId: string;
@@ -27,144 +32,61 @@ interface ClientDetailsProps {
 	onClose?: () => void;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const clientData: Record<string, any> = {
-	"1": {
-		name: "Chidinma Okonkwo",
-		email: "chidinma.okonkwo@email.com",
-		phone: "+234 (0)803 456 7890",
-		location: "Ikoyi, Lagos",
-		memberSince: "June 2023",
-		tier: "Platinum",
-		lifetimeValue: 145000,
-		totalRequests: 127,
-		completedRequests: 119,
-		pendingRequests: 5,
-		averageResponseTime: "8 minutes",
-		satisfactionScore: 98,
-		preferredCategories: ["Dining", "Travel", "Events"],
-		recentSpending: {
-			thisMonth: 12500,
-			lastMonth: 9800,
-			trend: "up",
-		},
-		urgentTasks: 2,
-	},
-	"2": {
-		name: "Emeka Adeleke",
-		email: "emeka.adeleke@email.com",
-		phone: "+234 (0)805 123 4567",
-		location: "Lekki Phase 1, Lagos",
-		memberSince: "March 2024",
-		tier: "Gold",
-		lifetimeValue: 82000,
-		totalRequests: 89,
-		completedRequests: 84,
-		pendingRequests: 3,
-		averageResponseTime: "12 minutes",
-		satisfactionScore: 95,
-		preferredCategories: ["Real Estate", "Business", "Lifestyle"],
-		recentSpending: {
-			thisMonth: 8500,
-			lastMonth: 11200,
-			trend: "down",
-		},
-		urgentTasks: 1,
-	},
-	"3": {
-		name: "Amara Nwosu",
-		email: "amara.nwosu@email.com",
-		phone: "+234 (0)816 789 0123",
-		location: "Victoria Island, Lagos",
-		memberSince: "January 2024",
-		tier: "Platinum",
-		lifetimeValue: 210000,
-		totalRequests: 156,
-		completedRequests: 148,
-		pendingRequests: 4,
-		averageResponseTime: "6 minutes",
-		satisfactionScore: 99,
-		preferredCategories: ["Travel", "Luxury Goods", "Events"],
-		recentSpending: {
-			thisMonth: 18900,
-			lastMonth: 15600,
-			trend: "up",
-		},
-		urgentTasks: 3,
-	},
-	"4": {
-		name: "Chukwudi Okafor",
-		email: "chukwudi.okafor@email.com",
-		phone: "+234 (0)818 234 5678",
-		location: "Banana Island, Lagos",
-		memberSince: "September 2023",
-		tier: "Silver",
-		lifetimeValue: 45000,
-		totalRequests: 67,
-		completedRequests: 63,
-		pendingRequests: 2,
-		averageResponseTime: "15 minutes",
-		satisfactionScore: 92,
-		preferredCategories: ["Wine & Spirits", "Shopping", "Dining"],
-		recentSpending: {
-			thisMonth: 4200,
-			lastMonth: 3800,
-			trend: "up",
-		},
-		urgentTasks: 0,
-	},
-	"5": {
-		name: "Ngozi Adekunle",
-		email: "ngozi.adekunle@email.com",
-		phone: "+234 (0)809 345 6789",
-		location: "Parkview Estate, Ikoyi",
-		memberSince: "May 2023",
-		tier: "Platinum",
-		lifetimeValue: 310000,
-		totalRequests: 203,
-		completedRequests: 195,
-		pendingRequests: 6,
-		averageResponseTime: "5 minutes",
-		satisfactionScore: 100,
-		preferredCategories: ["Art & Culture", "Yachts", "Fine Dining"],
-		recentSpending: {
-			thisMonth: 25000,
-			lastMonth: 28500,
-			trend: "down",
-		},
-		urgentTasks: 4,
-	},
-};
-
 export function ClientDetails({
 	clientId,
 	clientName,
 	onClose,
 }: ClientDetailsProps) {
-	const client = clientData[clientId] || {
-		name: clientName,
-		email: "N/A",
-		phone: "N/A",
-		location: "N/A",
-		memberSince: "N/A",
-		tier: "Silver",
-		lifetimeValue: 0,
-		totalRequests: 0,
-		completedRequests: 0,
-		pendingRequests: 0,
-		averageResponseTime: "N/A",
-		satisfactionScore: 0,
-		preferredCategories: [],
-		recentSpending: { thisMonth: 0, lastMonth: 0, trend: "same" },
-		urgentTasks: 0,
-	};
+	const navigate = useNavigate();
+	const { getUserById, loading: userLoading } = useUsers();
+	const { getBookings, loading: bookingsLoading } = useBookings();
+	const [client, setClient] = useState<ApiUser | null>(null);
+	const [clientBookings, setClientBookings] = useState<Booking[]>([]);
 
-	const completionRate =
-		client.totalRequests > 0
-			? Math.round((client.completedRequests / client.totalRequests) * 100)
-			: 0;
+	useEffect(() => {
+		const fetchData = async () => {
+			try {
+				const userData = await getUserById(clientId);
+				setClient(userData);
+
+				const bookingsData = await getBookings({ userId: clientId });
+				setClientBookings(bookingsData.data || []);
+			} catch (err) {
+				console.error("Failed to fetch client details", err);
+			}
+		};
+
+		fetchData();
+	}, [clientId, getUserById, getBookings]);
+
+	const stats = useMemo(() => {
+		const totalRequests = clientBookings.length;
+		const completedRequests = clientBookings.filter(
+			(b) => b.status === "COMPLETED" || b.status === "CONFIRMED"
+		).length;
+		const pendingRequests = clientBookings.filter(
+			(b) => b.status === "INQUIRY"
+		).length;
+		const lifetimeValue = clientBookings
+			.filter((b) => b.status === "COMPLETED" || b.status === "CONFIRMED")
+			.reduce((sum, b) => sum + parseFloat(b.totalAmount), 0);
+
+		const completionRate =
+			totalRequests > 0
+				? Math.round((completedRequests / totalRequests) * 100)
+				: 0;
+
+		return {
+			totalRequests,
+			completedRequests,
+			pendingRequests,
+			lifetimeValue,
+			completionRate,
+		};
+	}, [clientBookings]);
 
 	const getInitials = (name: string) => {
+		if (!name) return "U";
 		return name
 			.split(" ")
 			.map((n) => n[0])
@@ -172,11 +94,19 @@ export function ClientDetails({
 			.toUpperCase();
 	};
 
+	if (userLoading || !client) {
+		return (
+			<div className="h-full flex items-center justify-center p-20">
+				<div className="size-8 border-2 border-violet-600 border-t-transparent rounded-full animate-spin" />
+			</div>
+		);
+	}
+
 	return (
-		<ScrollArea className="h-full overflow-auto">
+		<ScrollArea className="h-full overflow-auto font-sans">
 			<div className="p-3 lg:p-6 space-y-4 lg:space-y-6 pb-safe">
 				{/* Client Header */}
-				<Card className="p-4 lg:p-6 bg-white dark:bg-zinc-900/50 border-zinc-200 dark:border-zinc-800 relative">
+				<Card className="p-4 lg:p-6 bg-white dark:bg-zinc-900/50 border-zinc-200 dark:border-zinc-800 relative shadow-none">
 					{/* Close Button */}
 					{onClose && (
 						<Button
@@ -196,8 +126,20 @@ export function ClientDetails({
 						</Avatar>
 						<div className="flex-1 min-w-0">
 							<div className="flex flex-wrap items-center gap-2 mb-2">
-								<h2 className="text-xl lg:text-2xl">{client.name}</h2>
+								<h2 className="text-xl lg:text-2xl font-bold">{client.name}</h2>
+								<Badge className="bg-violet-100 dark:bg-violet-950/50 text-violet-600 dark:text-violet-400 border-violet-200 dark:border-violet-800 border-none px-2 uppercase text-[10px] tracking-wider">
+									{client.tier}
+								</Badge>
+								<Badge
+									className={
+										client.status === "ACTIVE"
+											? "bg-green-100 dark:bg-green-950/50 text-green-600 dark:text-green-400 border-none"
+											: "bg-zinc-100 dark:bg-zinc-800 text-zinc-500 border-none"
+									}>
+									{client.status}
+								</Badge>
 							</div>
+
 							<div className="space-y-1 text-sm text-zinc-600 dark:text-zinc-400">
 								<div className="flex items-center gap-2">
 									<Mail className="size-4" />
@@ -208,13 +150,21 @@ export function ClientDetails({
 									<span>{client.phone}</span>
 								</div>
 								<div className="flex items-center gap-2">
-									<MapPin className="size-4" />
-									<span>{client.location}</span>
-								</div>
-								<div className="flex items-center gap-2">
 									<Calendar className="size-4" />
-									<span>Member since {client.memberSince}</span>
+									<span>
+										Member since {new Date(client.createdAt || "").toLocaleDateString()}
+									</span>
 								</div>
+							</div>
+							<div className="mt-4">
+								<Button
+									size="sm"
+									variant="outline"
+									className="gap-2"
+									onClick={() => navigate(`/wallet/${clientId}`)}>
+									<WalletIcon className="size-4" />
+									View Wallet
+								</Button>
 							</div>
 						</div>
 					</div>
@@ -222,92 +172,92 @@ export function ClientDetails({
 
 				{/* Key Metrics */}
 				<div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
-					<Card className="p-3 lg:p-4 bg-white dark:bg-zinc-900/50 border-zinc-200 dark:border-zinc-800">
+					<Card className="p-3 lg:p-4 bg-white dark:bg-zinc-900/50 border-zinc-200 dark:border-zinc-800 shadow-none">
 						<div className="flex items-center gap-2 mb-2">
 							<div className="p-2 rounded-lg bg-green-100 dark:bg-green-950/50">
 								<DollarSign className="size-4 text-green-600 dark:text-green-400" />
 							</div>
-							<p className="text-xs text-zinc-500 dark:text-zinc-400">LTV</p>
+							<p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">
+								LTV
+							</p>
 						</div>
-						<p className="text-lg lg:text-2xl mb-1">
-							₦{(client.lifetimeValue / 1000).toFixed(0)}k
+						<p className="text-lg lg:text-2xl mb-1 font-bold">
+							₦{stats.lifetimeValue.toLocaleString()}
 						</p>
-						<p className="text-xs text-zinc-500">Lifetime value</p>
-					</Card>
-
-					<Card className="p-3 lg:p-4 bg-white dark:bg-zinc-900/50 border-zinc-200 dark:border-zinc-800">
-						<div className="flex items-center justify-between mb-2">
-							<div className="flex items-center gap-2">
-								<div className="p-1.5 lg:p-2 rounded-lg bg-green-100 dark:bg-green-950/50 border border-green-300 dark:border-green-900">
-									<TrendingUp className="size-4 lg:size-5 text-green-600 dark:text-green-400" />
-								</div>
-							</div>
-							<p className="text-xs text-zinc-500 dark:text-zinc-400">This Month</p>
-						</div>
-						<p className="text-lg lg:text-2xl mb-1">
-							₦{(client.recentSpending.thisMonth / 1000).toFixed(1)}k
-						</p>
-						<p
-							className={`text-xs ${
-								client.recentSpending.trend === "up"
-									? "text-green-600 dark:text-green-400"
-									: client.recentSpending.trend === "down"
-									? "text-red-600 dark:text-red-400"
-									: "text-zinc-500"
-							}`}>
-							{client.recentSpending.trend === "up"
-								? "↑"
-								: client.recentSpending.trend === "down"
-								? "↓"
-								: "→"}{" "}
-							vs last month
+						<p className="text-[10px] text-zinc-500 uppercase tracking-tighter font-semibold">
+							Lifetime value
 						</p>
 					</Card>
 
-					<Card className="p-3 lg:p-4 bg-white dark:bg-zinc-900/50 border-zinc-200 dark:border-zinc-800">
+					<Card className="p-3 lg:p-4 bg-white dark:bg-zinc-900/50 border-zinc-200 dark:border-zinc-800 shadow-none">
 						<div className="flex items-center gap-2 mb-2">
 							<div className="p-2 rounded-lg bg-violet-100 dark:bg-violet-950/50">
 								<MessageSquare className="size-4 text-violet-600 dark:text-violet-400" />
 							</div>
-							<p className="text-xs text-zinc-500 dark:text-zinc-400">Requests</p>
+							<p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">
+								Requests
+							</p>
 						</div>
-						<p className="text-lg lg:text-2xl mb-1">{client.totalRequests}</p>
-						<p className="text-xs text-zinc-500">
-							{client.completedRequests} completed
+						<p className="text-lg lg:text-2xl mb-1 font-bold">
+							{stats.totalRequests}
+						</p>
+						<p className="text-[10px] text-zinc-500 uppercase tracking-tighter font-semibold">
+							{stats.completedRequests} completed
 						</p>
 					</Card>
 
-					<Card className="p-3 lg:p-4 bg-white dark:bg-zinc-900/50 border-zinc-200 dark:border-zinc-800">
+					<Card className="p-3 lg:p-4 bg-white dark:bg-zinc-900/50 border-zinc-200 dark:border-zinc-800 shadow-none">
 						<div className="flex items-center gap-2 mb-2">
 							<div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-950/50">
 								<Clock className="size-4 text-orange-600 dark:text-orange-400" />
 							</div>
-							<p className="text-xs text-zinc-500 dark:text-zinc-400">Avg Response</p>
+							<p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">
+								Pending
+							</p>
 						</div>
-						<p className="text-lg lg:text-2xl mb-1">
-							{client.averageResponseTime.split(" ")[0]}
+						<p className="text-lg lg:text-2xl mb-1 font-bold">
+							{stats.pendingRequests}
 						</p>
-						<p className="text-xs text-zinc-500">minutes</p>
+						<p className="text-[10px] text-zinc-500 uppercase tracking-tighter font-semibold">
+							Active inquiries
+						</p>
+					</Card>
+
+					<Card className="p-3 lg:p-4 bg-white dark:bg-zinc-900/50 border-zinc-200 dark:border-zinc-800 shadow-none">
+						<div className="flex items-center gap-2 mb-2">
+							<div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-950/50">
+								<TrendingUp className="size-4 text-blue-600 dark:text-blue-400" />
+							</div>
+							<p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">
+								Completion
+							</p>
+						</div>
+						<p className="text-lg lg:text-2xl mb-1 font-bold">
+							{stats.completionRate}%
+						</p>
+						<p className="text-[10px] text-zinc-500 uppercase tracking-tighter font-semibold">
+							Success rate
+						</p>
 					</Card>
 				</div>
 
 				{/* Performance Stats */}
 				<div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
-					<Card className="p-4 lg:p-6 bg-white dark:bg-zinc-900/50 border-zinc-200 dark:border-zinc-800">
-						<h3 className="text-base lg:text-lg mb-4 flex items-center gap-2">
+					<Card className="p-4 lg:p-6 bg-white dark:bg-zinc-900/50 border-zinc-200 dark:border-zinc-800 shadow-none">
+						<h3 className="text-base lg:text-lg mb-4 flex items-center gap-2 font-bold">
 							<Target className="size-5 text-violet-600 dark:text-violet-400" />
 							Request Performance
 						</h3>
 						<div className="space-y-4">
 							<div>
 								<div className="flex items-center justify-between mb-2">
-									<span className="text-sm text-zinc-600 dark:text-zinc-400">
+									<span className="text-sm text-zinc-600 dark:text-zinc-400 font-medium">
 										Completion Rate
 									</span>
-									<span className="text-sm">{completionRate}%</span>
+									<span className="text-sm font-bold">{stats.completionRate}%</span>
 								</div>
 								<Progress
-									value={completionRate}
+									value={stats.completionRate}
 									className="h-2"
 								/>
 							</div>
@@ -318,71 +268,72 @@ export function ClientDetails({
 								<div>
 									<div className="flex items-center gap-2 mb-1">
 										<CheckCircle2 className="size-4 text-green-600 dark:text-green-400" />
-										<span className="text-xs text-zinc-500 dark:text-zinc-400">
+										<span className="text-xs text-zinc-500 dark:text-zinc-400 font-semibold uppercase tracking-tighter">
 											Completed
 										</span>
 									</div>
-									<p className="text-xl">{client.completedRequests}</p>
+									<p className="text-xl font-bold">{stats.completedRequests}</p>
 								</div>
 								<div>
 									<div className="flex items-center gap-2 mb-1">
 										<Clock className="size-4 text-orange-600 dark:text-orange-400" />
-										<span className="text-xs text-zinc-500 dark:text-zinc-400">
+										<span className="text-xs text-zinc-500 dark:text-zinc-400 font-semibold uppercase tracking-tighter">
 											Pending
 										</span>
 									</div>
-									<p className="text-xl">{client.pendingRequests}</p>
+									<p className="text-xl font-bold">{stats.pendingRequests}</p>
 								</div>
 								<div>
 									<div className="flex items-center gap-2 mb-1">
 										<AlertCircle className="size-4 text-red-600 dark:text-red-400" />
-										<span className="text-xs text-zinc-500 dark:text-zinc-400">
-											Urgent
+										<span className="text-xs text-zinc-500 dark:text-zinc-400 font-semibold uppercase tracking-tighter">
+											Cancelled
 										</span>
 									</div>
-									<p className="text-xl">{client.urgentTasks}</p>
+									<p className="text-xl font-bold">
+										{clientBookings.filter((b) => b.status === "CANCELLED").length}
+									</p>
 								</div>
 							</div>
 						</div>
 					</Card>
 
-					<Card className="p-4 lg:p-6 bg-white dark:bg-zinc-900/50 border-zinc-200 dark:border-zinc-800">
-						<h3 className="text-base lg:text-lg mb-4 flex items-center gap-2">
-							<User className="size-5 text-violet-600 dark:text-violet-400" />
-							Client Satisfaction
+					<Card className="p-4 lg:p-6 bg-white dark:bg-zinc-900/50 border-zinc-200 dark:border-zinc-800 shadow-none">
+						<h3 className="text-base lg:text-lg mb-4 flex items-center gap-2 font-bold">
+							<Calendar className="size-5 text-violet-600 dark:text-violet-400" />
+							Recent Activity
 						</h3>
-						<div className="space-y-4">
-							<div>
-								<div className="flex items-center justify-between mb-2">
-									<span className="text-sm text-zinc-600 dark:text-zinc-400">
-										Satisfaction Score
-									</span>
-									<span className="text-sm">{client.satisfactionScore}%</span>
-								</div>
-								<Progress
-									value={client.satisfactionScore}
-									className="h-2"
-								/>
-							</div>
-
-							<Separator className="bg-zinc-200 dark:bg-zinc-800" />
-
-							<div>
-								<p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2">
-									Preferred Categories
-								</p>
-								<div className="flex flex-wrap gap-2">
-									{client.preferredCategories.map((category: string) => (
+						<ScrollArea className="h-40">
+							<div className="space-y-3">
+								{clientBookings.slice(0, 5).map((booking) => (
+									<div
+										key={booking.id}
+										className="flex items-center justify-between text-sm">
+										<div className="flex flex-col">
+											<span className="font-medium capitalize">
+												{booking.type.toLowerCase()} booking
+											</span>
+											<span className="text-xs text-zinc-500">
+												{new Date(booking.createdAt).toLocaleDateString()}
+											</span>
+										</div>
 										<Badge
-											key={category}
-											variant="outline"
-											className="text-xs border-violet-300 dark:border-violet-700 text-violet-600 dark:text-violet-400">
-											{category}
+											className={
+												booking.status === "CONFIRMED" || booking.status === "COMPLETED"
+													? "bg-green-100 dark:bg-green-950/50 text-green-600 border-none"
+													: "bg-orange-100 dark:bg-orange-950/50 text-orange-600 border-none"
+											}>
+											{booking.status}
 										</Badge>
-									))}
-								</div>
+									</div>
+								))}
+								{clientBookings.length === 0 && (
+									<p className="text-sm text-zinc-500 italic text-center py-4">
+										No recent activity
+									</p>
+								)}
 							</div>
-						</div>
+						</ScrollArea>
 					</Card>
 				</div>
 			</div>

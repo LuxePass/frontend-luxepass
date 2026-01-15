@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "../components/ui/card";
+import { useAuth } from "../hooks/useAuth";
+import api from "../services/api";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Avatar, AvatarFallback } from "../components/ui/avatar";
@@ -16,6 +18,8 @@ import {
 	Clock,
 	X,
 	RefreshCw,
+	UserPlus,
+	Archive,
 } from "lucide-react";
 import { cn } from "../utils";
 import { customToast } from "./CustomToast";
@@ -74,6 +78,8 @@ export function LiveChat() {
 	const [lastMessageFetch, setLastMessageFetch] = useState<
 		Record<string, number>
 	>({});
+
+	const { user } = useAuth();
 
 	// Refs for polling intervals
 	const conversationsPollRef = useRef<ReturnType<typeof setTimeout> | null>(
@@ -795,6 +801,7 @@ export function LiveChat() {
 			}));
 
 			// Update conversation last message
+			// Update conversation last message
 			setConversations((prev) =>
 				prev.map((c) =>
 					c.id === selectedConversation
@@ -813,16 +820,17 @@ export function LiveChat() {
 				description: "Message sent via WhatsApp Business API",
 			});
 
-			// Refresh messages after a short delay to get updated status
+			// Refresh messages after a short delay
 			setTimeout(() => {
 				void fetchMessages(selectedConversation, true);
 			}, 1000);
 		} catch (err) {
 			console.error("Error sending message:", err);
+			const errorMessage =
+				err instanceof Error ? err.message : "Failed to send message";
 			customToast.error({
-				title: "WhatsApp Error",
-				description:
-					err instanceof Error ? err.message : "Failed to send WhatsApp message.",
+				title: "Error",
+				description: errorMessage,
 			});
 		} finally {
 			setIsSending(false);
@@ -831,12 +839,64 @@ export function LiveChat() {
 		inputMessage,
 		selectedConversation,
 		conversations,
-		normalizePhoneNumber,
-		whatsappBackendBaseUrl,
 		backendHeaders,
 		normalizeTimestamp,
+		normalizePhoneNumber,
+		whatsappBackendBaseUrl,
 		fetchMessages,
 	]);
+
+	const handleAssignToMe = async () => {
+		if (!selectedConversation || !user?.id) return;
+		const conv = conversations.find((c) => c.id === selectedConversation);
+		if (!conv?.clientPhone) return;
+
+		try {
+			const phone = conv.clientPhone.replace(/\D/g, "");
+			const userRes = await api.get("/users", { params: { phone } });
+			const targetUser = userRes.data?.data?.users?.[0] || userRes.data?.data?.[0];
+
+			if (!targetUser) {
+				customToast.error("User not found in system");
+				return;
+			}
+
+			await api.post(`/pas/${user.id}/assign`, {
+				userId: targetUser.id,
+			});
+
+			customToast.success("User assigned to you successfully");
+		} catch (err) {
+			console.error("Assignment failed", err);
+			customToast.error("Failed to assign user");
+		}
+	};
+
+	const handleResolve = async () => {
+		if (!selectedConversation || !user?.id) return;
+		const conv = conversations.find((c) => c.id === selectedConversation);
+		if (!conv?.clientPhone) return;
+
+		try {
+			const phone = conv.clientPhone.replace(/\D/g, "");
+			const userRes = await api.get("/users", { params: { phone } });
+			const targetUser = userRes.data?.data?.users?.[0] || userRes.data?.data?.[0];
+
+			if (!targetUser) {
+				customToast.error("User not found");
+				return;
+			}
+
+			await api.post(`/pas/${user.id}/unassign/${targetUser.id}`, {
+				reason: "Resolved via Live Chat",
+			});
+
+			customToast.success("Marked as resolved (Unassigned)");
+		} catch (err) {
+			console.error("Resolution failed", err);
+			customToast.error("Failed to mark as resolved");
+		}
+	};
 
 	/**
 	 * Handle conversation selection
@@ -1152,6 +1212,22 @@ export function LiveChat() {
 									<RefreshCw
 										className={cn("size-4", isLoadingMessages && "animate-spin")}
 									/>
+								</Button>
+								<Button
+									variant="outline"
+									size="sm"
+									className="hidden lg:flex h-8 px-3 text-xs gap-2"
+									onClick={handleAssignToMe}>
+									<UserPlus className="size-3.5" />
+									Assign to Me
+								</Button>
+								<Button
+									variant="outline"
+									size="sm"
+									className="hidden lg:flex h-8 px-3 text-xs gap-2"
+									onClick={handleResolve}>
+									<Archive className="size-3.5" />
+									Resolve
 								</Button>
 								<Button
 									variant="outline"
