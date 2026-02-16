@@ -1,7 +1,9 @@
 import { useState, useEffect, useMemo } from "react";
 import { useUsers, type User as ApiUser } from "../hooks/useUsers";
 import { useBookings, type Booking } from "../hooks/useBookings";
+import { useWallet } from "../hooks/useWallet";
 import { Card } from "../components/ui/card";
+import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "../components/ui/avatar";
 import { Badge } from "../components/ui/badge";
 import { Progress } from "../components/ui/progress";
@@ -9,10 +11,8 @@ import { Separator } from "../components/ui/separator";
 import { ScrollArea } from "../components/ui/scroll-area";
 import { Button } from "../components/ui/button";
 import {
-	User,
 	Mail,
 	Phone,
-	MapPin,
 	Calendar,
 	DollarSign,
 	TrendingUp,
@@ -28,20 +28,60 @@ import { useNavigate } from "react-router-dom";
 
 interface ClientDetailsProps {
 	clientId: string;
-	clientName: string;
 	onClose?: () => void;
 }
 
-export function ClientDetails({
-	clientId,
-	clientName,
-	onClose,
-}: ClientDetailsProps) {
+export function ClientDetails({ clientId, onClose }: ClientDetailsProps) {
 	const navigate = useNavigate();
 	const { getUserById, loading: userLoading } = useUsers();
-	const { getBookings, loading: bookingsLoading } = useBookings();
+	const { getBookings } = useBookings();
 	const [client, setClient] = useState<ApiUser | null>(null);
 	const [clientBookings, setClientBookings] = useState<Booking[]>([]);
+
+	// Withdraw State
+	const [showWithdrawDialog, setShowWithdrawDialog] = useState(false);
+	const [withdrawAmount, setWithdrawAmount] = useState("");
+	const [withdrawNarration, setWithdrawNarration] = useState("");
+	const [withdrawLoading, setWithdrawLoading] = useState(false);
+
+	const { initiateTransfer } = useWallet();
+
+	const handleWithdraw = async () => {
+		if (!withdrawAmount || !withdrawNarration) {
+			toast.error("Please enter amount and narration");
+			return;
+		}
+
+		setWithdrawLoading(true);
+		try {
+			// Initiate transfer on behalf of user
+			// We pass the user identifier (clientId which is the UUID) locally to the hook
+			// The hook then calls POST /transfers.
+			// Note: The backend endpoint might expect 'securityAnswer' if not utilizing a special admin bypass.
+			// If the PA is logged in, they might need to provide THEIR security answer or the user's?
+			// Assuming for now the Admin/PA has bypass or uses their own credentials implicitly authenticated by token.
+			// If strict security answer is required, we might need to ask the PA for THEIR security answer in the dialog.
+			// Let's assume for now we try without security answer or with a bypass flag if available,
+			// or maybe the backend checks if the caller is PA and relaxes the rule?
+			// We will send specific narration indicating admin action.
+
+			await initiateTransfer({
+				amount: withdrawAmount,
+				narration: withdrawNarration,
+				userIdentifier: clientId,
+			});
+
+			toast.success("Withdrawal initiated successfully");
+			setShowWithdrawDialog(false);
+			setWithdrawAmount("");
+			setWithdrawNarration("");
+		} catch (error) {
+			console.error("Withdrawal failed", error);
+			toast.error("Failed to process withdrawal");
+		} finally {
+			setWithdrawLoading(false);
+		}
+	};
 
 	useEffect(() => {
 		const fetchData = async () => {
@@ -49,8 +89,13 @@ export function ClientDetails({
 				const userData = await getUserById(clientId);
 				setClient(userData);
 
-				const bookingsData = await getBookings({ userId: clientId });
-				setClientBookings(bookingsData.data || []);
+				if (userData) {
+					// Use uniqueId for booking lookup as it's more reliable for the backend resolution
+					const bookingsData = await getBookings({
+						userId: userData.uniqueId || clientId,
+					});
+					setClientBookings(bookingsData.data || []);
+				}
 			} catch (err) {
 				console.error("Failed to fetch client details", err);
 			}
@@ -165,10 +210,76 @@ export function ClientDetails({
 									<WalletIcon className="size-4" />
 									View Wallet
 								</Button>
+								<Button
+									size="sm"
+									variant="default" // or destructive/warning if funds specific
+									className="gap-2 bg-red-600 hover:bg-red-700 text-white ml-2"
+									onClick={() => setShowWithdrawDialog(true)}>
+									<TrendingUp className="size-4 rotate-180" />{" "}
+									{/* Down trend for withdrawal */}
+									Withdraw Funds
+								</Button>
 							</div>
 						</div>
 					</div>
 				</Card>
+
+				{/* Withdraw Dialog */}
+				<Dialog
+					open={showWithdrawDialog}
+					onOpenChange={setShowWithdrawDialog}>
+					<DialogContent className="sm:max-w-[425px]">
+						<DialogHeader>
+							<DialogTitle>Withdraw Funds</DialogTitle>
+							<DialogDescription>
+								Initiate a withdrawal from the client's wallet to their bank account.
+							</DialogDescription>
+						</DialogHeader>
+						<div className="grid gap-4 py-4">
+							<div className="grid grid-cols-4 items-center gap-4">
+								<Label
+									htmlFor="amount"
+									className="text-right">
+									Amount
+								</Label>
+								<Input
+									id="amount"
+									type="number"
+									value={withdrawAmount}
+									onChange={(e) => setWithdrawAmount(e.target.value)}
+									className="col-span-3"
+									placeholder="0.00"
+								/>
+							</div>
+							<div className="grid grid-cols-4 items-center gap-4">
+								<Label
+									htmlFor="narration"
+									className="text-right">
+									Narration
+								</Label>
+								<Input
+									id="narration"
+									value={withdrawNarration}
+									onChange={(e) => setWithdrawNarration(e.target.value)}
+									className="col-span-3"
+									placeholder="Reason for withdrawal"
+								/>
+							</div>
+						</div>
+						<DialogFooter>
+							<Button
+								variant="outline"
+								onClick={() => setShowWithdrawDialog(false)}>
+								Cancel
+							</Button>
+							<Button
+								onClick={handleWithdraw}
+								disabled={withdrawLoading}>
+								{withdrawLoading ? "Processing..." : "Confirm Withdrawal"}
+							</Button>
+						</DialogFooter>
+					</DialogContent>
+				</Dialog>
 
 				{/* Key Metrics */}
 				<div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">

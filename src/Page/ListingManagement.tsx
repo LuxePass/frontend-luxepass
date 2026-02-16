@@ -69,9 +69,14 @@ export function ListingManagement() {
 		listings,
 		loading,
 		getListings,
+		createListing,
 		updateVettingStatus,
 		deleteListing,
+		getMedia,
+		addMedia,
+		deleteMedia,
 		updateLocalListing,
+		addLocalListing,
 		removeLocalListing,
 	} = useListings();
 	const [searchQuery, setSearchQuery] = useState("");
@@ -133,7 +138,6 @@ export function ListingManagement() {
 		}
 	};
 
-	const { createListing } = useListings();
 	const [createDialogOpen, setCreateDialogOpen] = useState(false);
 	const [creating, setCreating] = useState(false);
 	const [newListing, setNewListing] = useState<Partial<PropertyListing>>({
@@ -156,7 +160,10 @@ export function ListingManagement() {
 		e.preventDefault();
 		setCreating(true);
 		try {
-			await createListing(newListing);
+			const createdListing = await createListing(newListing);
+			if (createdListing) {
+				addLocalListing(createdListing);
+			}
 			customToast.success("Listing created successfully");
 			setCreateDialogOpen(false);
 			setNewListing({
@@ -174,7 +181,7 @@ export function ListingManagement() {
 				maxGuests: 2,
 				amenities: ["Wifi"],
 			});
-			getListings();
+			// getListings(); // Background refresh if needed, but UI is updated
 		} catch (err) {
 			customToast.error("Failed to create listing");
 		} finally {
@@ -185,8 +192,6 @@ export function ListingManagement() {
 	const [imagesDialogOpen, setImagesDialogOpen] = useState(false);
 	const [listingImages, setListingImages] = useState<ListingMedia[]>([]);
 	const [uploading, setUploading] = useState(false);
-
-	const { getMedia, addMedia, deleteMedia } = useListings();
 
 	const handleManageMedia = async (listing: PropertyListing) => {
 		setSelectedListing(listing);

@@ -295,7 +295,12 @@ export function LiveChat() {
 			setError(null);
 
 			try {
-				const response = await fetch(`${whatsappBackendBaseUrl}/conversations`, {
+				const url = new URL(`${whatsappBackendBaseUrl}/conversations`);
+				if (user?.id) {
+					url.searchParams.append("paId", user.id);
+				}
+
+				const response = await fetch(url.toString(), {
 					headers: backendHeaders,
 					method: "GET",
 				});

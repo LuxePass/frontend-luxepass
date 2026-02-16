@@ -109,6 +109,27 @@ export function useListings() {
 		[setState]
 	);
 
+	// Helper to manually add a new listing to the local state
+	const addLocalListing = useCallback(
+		(newListing: PropertyListing) => {
+			setState((prev) => {
+				if (!prev.data) return prev;
+				return {
+					...prev,
+					data: {
+						...prev.data,
+						data: [newListing, ...prev.data.data],
+						meta: {
+							...prev.data.meta,
+							totalItems: (prev.data.meta?.totalItems || 0) + 1,
+						},
+					},
+				};
+			});
+		},
+		[setState]
+	);
+
 	// Helper to manually remove a listing from the local state
 	const removeLocalListing = useCallback(
 		(id: string) => {
@@ -164,6 +185,7 @@ export function useListings() {
 		addMedia,
 		deleteMedia,
 		updateLocalListing,
+		addLocalListing,
 		removeLocalListing,
 	};
 }

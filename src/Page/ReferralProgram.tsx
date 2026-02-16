@@ -2,7 +2,7 @@
 import { cn } from "../utils";
 import { customToast } from "./CustomToast";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -248,14 +248,81 @@ const mockClientStats: ClientReferralStats[] = [
 ];
 
 export function ReferralProgram() {
-	const [activities, setActivities] = useState(mockActivities);
-	const [clientStats, setClientStats] = useState(mockClientStats);
+	const [activities, setActivities] = useState<ReferralActivity[]>([]);
+	const [clientStats, setClientStats] = useState<ClientReferralStats[]>([]);
 	const [searchQuery, setSearchQuery] = useState("");
 	const [statusFilter, setStatusFilter] = useState<string>("all");
 	const [rewardFilter, setRewardFilter] = useState<string>("all");
 	const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
 	const [selectedActivity, setSelectedActivity] =
 		useState<ReferralActivity | null>(null);
+	const [loading, setLoading] = useState(true);
+
+	// Fetch data from whatsapp-backend
+	useEffect(() => {
+		const fetchReferralData = async () => {
+			try {
+				const response = await fetch("http://localhost:3500/api/referrals/stats");
+				const data = await response.json();
+
+				if (data.success) {
+					// Transform Activities
+					const newActivities: ReferralActivity[] = data.data.activities.map(
+						(item: Record<string, any>, index: number) => ({
+							id: item._id || `ref-${index}`,
+							referrerId: item.referredBy,
+							referrerName: item.referredBy, // We only have the code initially, could map if we fetched referrers
+							referredId: item._id,
+							referredName: item.name || "Unknown",
+							referredEmail: item.email || "N/A",
+							referredPhone: item.phoneNumber,
+							dateReferred: new Date(item.createdAt).toISOString().split("T")[0],
+							dateJoined: new Date(item.createdAt).toISOString().split("T")[0],
+							status: "joined", // Default since they exist in User DB
+							rewardStatus: "pending",
+							rewardAmount: 0,
+							tierLevel: 1,
+							totalSpent: 0,
+							lifetimeValue: 0,
+						})
+					);
+
+					// Transform Client Stats (Top Referrers)
+					const newClientStats: ClientReferralStats[] = data.data.topReferrers.map(
+						(item: Record<string, any>) => ({
+							clientId: item.referralCode,
+							clientName: item.name || "Unknown",
+							totalReferrals: item.count,
+							successfulReferrals: item.count,
+							pendingReferrals: 0,
+							totalRewardsEarned: 0,
+							pendingRewards: 0,
+							lifetimeValueGenerated: 0,
+							joinDate: "2025-01-01", // Placeholder
+							referralTier: "bronze",
+							conversionRate: 0,
+						})
+					);
+
+					setActivities(newActivities);
+					setClientStats(newClientStats);
+				}
+			} catch (error) {
+				console.error("Failed to fetch referral stats:", error);
+				customToast.error({
+					title: "Error",
+					description: "Failed to load referral data",
+				});
+				// Fallback to mock data on error for demo purposes if needed, or leave empty
+				setActivities(mockActivities);
+				setClientStats(mockClientStats);
+			} finally {
+				setLoading(false);
+			}
+		};
+
+		fetchReferralData();
+	}, []);
 
 	const filteredActivities = activities.filter((activity) => {
 		const matchesSearch =

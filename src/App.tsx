@@ -108,7 +108,6 @@ function ClientDetailsPage() {
 	return (
 		<ClientDetails
 			clientId={clientId}
-			clientName=""
 			onClose={() => navigate("/clients")}
 		/>
 	);
