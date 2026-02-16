@@ -25,6 +25,16 @@ import {
 	Wallet as WalletIcon,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "../components/ui/dialog";
+import { Label } from "../components/ui/label";
+import { Input } from "../components/ui/input";
 
 interface ClientDetailsProps {
 	clientId: string;
@@ -107,19 +117,19 @@ export function ClientDetails({ clientId, onClose }: ClientDetailsProps) {
 	const stats = useMemo(() => {
 		const totalRequests = clientBookings.length;
 		const completedRequests = clientBookings.filter(
-			(b) => b.status === "COMPLETED" || b.status === "CONFIRMED"
+			(b) => b.status === "COMPLETED" || b.status === "CONFIRMED",
 		).length;
 		const pendingRequests = clientBookings.filter(
-			(b) => b.status === "INQUIRY"
+			(b) => b.status === "INQUIRY",
 		).length;
 		const lifetimeValue = clientBookings
 			.filter((b) => b.status === "COMPLETED" || b.status === "CONFIRMED")
 			.reduce((sum, b) => sum + parseFloat(b.totalAmount), 0);
 
 		const completionRate =
-			totalRequests > 0
-				? Math.round((completedRequests / totalRequests) * 100)
-				: 0;
+			totalRequests > 0 ?
+				Math.round((completedRequests / totalRequests) * 100)
+			:	0;
 
 		return {
 			totalRequests,
@@ -177,9 +187,9 @@ export function ClientDetails({ clientId, onClose }: ClientDetailsProps) {
 								</Badge>
 								<Badge
 									className={
-										client.status === "ACTIVE"
-											? "bg-green-100 dark:bg-green-950/50 text-green-600 dark:text-green-400 border-none"
-											: "bg-zinc-100 dark:bg-zinc-800 text-zinc-500 border-none"
+										client.status === "ACTIVE" ?
+											"bg-green-100 dark:bg-green-950/50 text-green-600 dark:text-green-400 border-none"
+										:	"bg-zinc-100 dark:bg-zinc-800 text-zinc-500 border-none"
 									}>
 									{client.status}
 								</Badge>
@@ -430,9 +440,9 @@ export function ClientDetails({ clientId, onClose }: ClientDetailsProps) {
 										</div>
 										<Badge
 											className={
-												booking.status === "CONFIRMED" || booking.status === "COMPLETED"
-													? "bg-green-100 dark:bg-green-950/50 text-green-600 border-none"
-													: "bg-orange-100 dark:bg-orange-950/50 text-orange-600 border-none"
+												booking.status === "CONFIRMED" || booking.status === "COMPLETED" ?
+													"bg-green-100 dark:bg-green-950/50 text-green-600 border-none"
+												:	"bg-orange-100 dark:bg-orange-950/50 text-orange-600 border-none"
 											}>
 											{booking.status}
 										</Badge>
