@@ -5,15 +5,12 @@ import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
-import { Separator } from "../components/ui/separator";
-import { Mail, Lock, User, ArrowRight } from "lucide-react";
+import { Mail, Lock, ArrowRight } from "lucide-react";
 
 export const AuthFlow = () => {
 	const { login, verify2FA, loading } = useAuth();
-	const [isLogin, setIsLogin] = useState(true);
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
-	const [name, setName] = useState("");
 	const [show2FA, setShow2FA] = useState(false);
 	const [tempToken, setTempToken] = useState("");
 	const [totpCode, setTotpCode] = useState("");
@@ -22,19 +19,13 @@ export const AuthFlow = () => {
 		e.preventDefault();
 
 		try {
-			if (isLogin) {
-				const result = await login(email, password);
-				if (result.requiresTwoFactor && result.tempToken) {
-					setShow2FA(true);
-					setTempToken(result.tempToken);
-					toast.info("Two-factor authentication required");
-				} else {
-					toast.success("Log in successful!");
-				}
+			const result = await login(email, password);
+			if (result.requiresTwoFactor && result.tempToken) {
+				setShow2FA(true);
+				setTempToken(result.tempToken);
+				toast.info("Two-factor authentication required");
 			} else {
-				toast.error(
-					"PA Sign up is currently disabled. Please contact system admin."
-				);
+				toast.success("Log in successful!");
 			}
 		} catch (err: unknown) {
 			const errorObj = err as {
@@ -75,16 +66,14 @@ export const AuthFlow = () => {
 							Luxepass PA
 						</h1>
 						<p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-							{isLogin
-								? "Welcome back to your dashboard"
-								: "Create your admin account"}
+							Welcome back to your dashboard
 						</p>
 					</div>
 				</div>
 
 				{/* Auth Card */}
 				<Card className="p-6 lg:p-8 bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
-					{show2FA ? (
+					{show2FA ?
 						<form
 							onSubmit={handle2FAVerify}
 							className="space-y-5">
@@ -122,17 +111,16 @@ export const AuthFlow = () => {
 								type="submit"
 								className="w-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white font-medium shadow-none"
 								disabled={loading}>
-								{loading ? (
+								{loading ?
 									<span className="flex items-center gap-2">
 										<div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
 										Verifying...
 									</span>
-								) : (
-									<span className="flex items-center gap-2">
+								:	<span className="flex items-center gap-2">
 										Verify and Sign In
 										<ArrowRight className="size-4" />
 									</span>
-								)}
+								}
 							</Button>
 
 							<button
@@ -142,33 +130,9 @@ export const AuthFlow = () => {
 								Back to Login
 							</button>
 						</form>
-					) : (
-						<form
+					:	<form
 							onSubmit={handleSubmit}
 							className="space-y-5">
-							{/* Name Field (Signup Only) */}
-							{!isLogin && (
-								<div className="space-y-2">
-									<Label
-										htmlFor="name"
-										className="text-sm text-zinc-700 dark:text-zinc-300">
-										Full Name
-									</Label>
-									<div className="relative">
-										<User className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-zinc-400" />
-										<Input
-											id="name"
-											type="text"
-											placeholder="Adebayo Okonkwo"
-											value={name}
-											onChange={(e) => setName(e.target.value)}
-											className="pl-10 bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700 font-sans"
-											required={!isLogin}
-										/>
-									</div>
-								</div>
-							)}
-
 							{/* Email Field */}
 							<div className="space-y-2">
 								<Label
@@ -211,57 +175,32 @@ export const AuthFlow = () => {
 								</div>
 							</div>
 
-							{/* Forgot Password (Login Only) */}
-							{isLogin && (
-								<div className="flex justify-end">
-									<button
-										type="button"
-										className="text-xs text-violet-600 dark:text-violet-400 hover:underline">
-										Forgot password?
-									</button>
-								</div>
-							)}
+							<div className="flex justify-end">
+								<button
+									type="button"
+									className="text-xs text-violet-600 dark:text-violet-400 hover:underline">
+									Forgot password?
+								</button>
+							</div>
 
 							{/* Submit Button */}
 							<Button
 								type="submit"
 								className="w-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white font-medium shadow-none"
 								disabled={loading}>
-								{loading ? (
+								{loading ?
 									<span className="flex items-center gap-2">
 										<div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-										{isLogin ? "Signing in..." : "Creating account..."}
+										Signing in...
 									</span>
-								) : (
-									<span className="flex items-center gap-2">
-										{isLogin ? "Sign In" : "Create Account"}
+								:	<span className="flex items-center gap-2">
+										Sign In
 										<ArrowRight className="size-4" />
 									</span>
-								)}
+								}
 							</Button>
-
-							{/* Divider */}
-							<div className="relative">
-								<Separator className="bg-zinc-200 dark:bg-zinc-800" />
-								<span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-zinc-900 px-3 text-xs text-zinc-500 font-medium">
-									or
-								</span>
-							</div>
-
-							{/* Toggle Login/Signup */}
-							<div className="text-center">
-								<p className="text-sm text-zinc-600 dark:text-zinc-400">
-									{isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
-									<button
-										type="button"
-										onClick={() => setIsLogin(!isLogin)}
-										className="text-violet-600 dark:text-violet-400 hover:underline font-medium">
-										{isLogin ? "Sign up" : "Sign in"}
-									</button>
-								</p>
-							</div>
 						</form>
-					)}
+					}
 				</Card>
 
 				{/* Footer */}
