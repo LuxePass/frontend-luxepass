@@ -53,31 +53,45 @@ export function ClientDetails({ clientId, onClose }: ClientDetailsProps) {
 	const [withdrawAmount, setWithdrawAmount] = useState("");
 	const [withdrawNarration, setWithdrawNarration] = useState("");
 	const [withdrawLoading, setWithdrawLoading] = useState(false);
+	const [whatsappAccounts, setWhatsappAccounts] = useState<any[]>([]);
+	const [selectedAccountId, setSelectedAccountId] = useState<string>("");
 
 	const { initiateTransfer } = useWallet();
 
+	const fetchWhatsappAccounts = async () => {
+		try {
+			const identifier = client?.phone || clientId;
+			const baseUrl =
+				import.meta.env.VITE_WHATSAPP_BACKEND_URL || "http://localhost:3500/api";
+			const response = await fetch(`${baseUrl}/users/${identifier}/bank-accounts`);
+			const result = await response.json();
+			if (result.success) {
+				setWhatsappAccounts(result.data || []);
+			}
+		} catch (error) {
+			console.error("Failed to fetch WhatsApp accounts", error);
+		}
+	};
+
 	const handleWithdraw = async () => {
-		if (!withdrawAmount || !withdrawNarration) {
-			toast.error("Please enter amount and narration");
+		if (!withdrawAmount) {
+			toast.error("Please enter amount");
 			return;
+		}
+
+		let finalNarration = withdrawNarration;
+		if (selectedAccountId !== "") {
+			const acc = whatsappAccounts[parseInt(selectedAccountId)];
+			if (acc) {
+				finalNarration = `${withdrawNarration} (To: ${acc.bankName} - ${acc.accountNumber})`;
+			}
 		}
 
 		setWithdrawLoading(true);
 		try {
-			// Initiate transfer on behalf of user
-			// We pass the user identifier (clientId which is the UUID) locally to the hook
-			// The hook then calls POST /transfers.
-			// Note: The backend endpoint might expect 'securityAnswer' if not utilizing a special admin bypass.
-			// If the PA is logged in, they might need to provide THEIR security answer or the user's?
-			// Assuming for now the Admin/PA has bypass or uses their own credentials implicitly authenticated by token.
-			// If strict security answer is required, we might need to ask the PA for THEIR security answer in the dialog.
-			// Let's assume for now we try without security answer or with a bypass flag if available,
-			// or maybe the backend checks if the caller is PA and relaxes the rule?
-			// We will send specific narration indicating admin action.
-
 			await initiateTransfer({
 				amount: withdrawAmount,
-				narration: withdrawNarration,
+				narration: finalNarration,
 				userIdentifier: client?.uniqueId || clientId,
 			});
 
@@ -85,6 +99,7 @@ export function ClientDetails({ clientId, onClose }: ClientDetailsProps) {
 			setShowWithdrawDialog(false);
 			setWithdrawAmount("");
 			setWithdrawNarration("");
+			setSelectedAccountId("");
 		} catch (error) {
 			console.error("Withdrawal failed", error);
 			toast.error("Failed to process withdrawal");
@@ -112,7 +127,8 @@ export function ClientDetails({ clientId, onClose }: ClientDetailsProps) {
 		};
 
 		fetchData();
-	}, [clientId, getUserById, getBookings]);
+		fetchWhatsappAccounts();
+	}, [clientId, getUserById, getBookings, client?.phone]);
 
 	const stats = useMemo(() => {
 		const totalRequests = clientBookings.length;
@@ -260,6 +276,27 @@ export function ClientDetails({ clientId, onClose }: ClientDetailsProps) {
 									className="col-span-3"
 									placeholder="0.00"
 								/>
+							</div>
+							<div className="grid grid-cols-4 items-center gap-4">
+								<Label
+									htmlFor="account"
+									className="text-right">
+									Pay To
+								</Label>
+								<select
+									id="account"
+									value={selectedAccountId}
+									onChange={(e) => setSelectedAccountId(e.target.value)}
+									className="col-span-3 flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50">
+									<option value="">Manual Entry / Other</option>
+									{whatsappAccounts.map((acc, index) => (
+										<option
+											key={index}
+											value={index.toString()}>
+											{acc.bankName} - {acc.accountNumber}
+										</option>
+									))}
+								</select>
 							</div>
 							<div className="grid grid-cols-4 items-center gap-4">
 								<Label

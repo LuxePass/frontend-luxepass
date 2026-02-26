@@ -1,7 +1,6 @@
 import { useCallback, useState } from "react";
 import api from "../services/api";
 import { useApi } from "./useApi";
-import { useAuth } from "./useAuth";
 
 export interface VirtualAccount {
 	id: string;
@@ -48,8 +47,6 @@ export interface Transaction {
 }
 
 export function useWallet() {
-	const { user } = useAuth();
-
 	const { data: wallet, loading, request } = useApi<Wallet>();
 	const [savedBankAccounts, setSavedBankAccounts] = useState<SavedBankAccount[]>(
 		[],
