@@ -3,26 +3,41 @@ import api from "../services/api";
 import { useApi } from "./useApi";
 import { useAuth } from "./useAuth";
 
+export interface VirtualAccount {
+	id: string;
+	accountNumber: string;
+	bankCode: string;
+	bankName: string;
+	accountName: string;
+	isActive: boolean;
+}
+
 export interface Wallet {
 	id: string;
 	userId: string;
 	balance: string;
 	currency: string;
-	status: string;
-	virtualAccount?: {
-		accountNumber: string;
-		bankName: string;
-		accountName: string;
-	};
+	setupStatus: string;
+	setupAttempts: number;
+	setupError: string | null;
+	setupCompletedAt: string | null;
+	createdAt: string;
+	updatedAt: string;
+	virtualAccounts: VirtualAccount[];
 }
 
 export interface Transaction {
 	id: string;
-	reference: string;
+	type: string;
 	amount: string;
+	balanceBefore: string;
+	balanceAfter: string;
+	currency: string;
+	reference: string;
+	description: string;
 	status: string;
+	category: string;
 	createdAt: string;
-	narration?: string;
 }
 
 export function useWallet() {
@@ -92,14 +107,14 @@ export function useWallet() {
 			// Let's try the generic identifier endpoint first which we know exists.
 			return request(api.get(`/wallet/${userId}`));
 		},
-		[request]
+		[request],
 	);
 
 	const getTransferHistory = useCallback(
 		async (userId: string) => {
 			return requestTransactions(api.get("/transfers", { params: { userId } }));
 		},
-		[requestTransactions]
+		[requestTransactions],
 	);
 
 	const initiateTransfer = useCallback(
@@ -112,7 +127,7 @@ export function useWallet() {
 			const response = await api.post("/transfers", transferData);
 			return response.data?.data;
 		},
-		[]
+		[],
 	);
 
 	return {

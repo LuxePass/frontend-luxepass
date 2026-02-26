@@ -41,9 +41,7 @@ import {
 import { cn } from "../utils";
 import { customToast } from "./CustomToast";
 
-interface WalletProps {
-	userId?: string;
-}
+// Interface for props if needed
 
 import { useParams } from "react-router-dom";
 
@@ -105,7 +103,11 @@ export function Wallet() {
 			setAmount("");
 			setNarration("");
 			setSecurityAnswer("");
-			getMyWallet();
+			if (userId) {
+				await getUserWallet(userId);
+			} else {
+				await getMyWallet();
+			}
 		} catch (err: any) {
 			const msg =
 				err.response?.data?.error?.message || "Failed to initiate transfer";
@@ -121,6 +123,26 @@ export function Wallet() {
 			description: "Your new payment method has been added successfully",
 		});
 		setAddMethodDialogOpen(false);
+	};
+
+	const handleRefresh = async () => {
+		setWithdrawing(true);
+		try {
+			if (userId) {
+				await getUserWallet(userId);
+			} else {
+				await getMyWallet();
+			}
+			customToast.success({
+				title: "Wallet Refreshed",
+				description: "Wallet information has been updated successfully",
+			});
+		} catch (err: any) {
+			const msg = err.response?.data?.error?.message || "Failed to refresh wallet";
+			customToast.error(msg);
+		} finally {
+			setWithdrawing(false);
+		}
 	};
 
 	return (
@@ -139,11 +161,9 @@ export function Wallet() {
 						variant="outline"
 						size="sm"
 						className="gap-2">
-						{balanceVisible ? (
+						{balanceVisible ?
 							<EyeOff className="size-4" />
-						) : (
-							<Eye className="size-4" />
-						)}
+						:	<Eye className="size-4" />}
 						{balanceVisible ? "Hide" : "Show"}
 					</Button>
 				</div>
@@ -194,7 +214,7 @@ export function Wallet() {
 								Account Status
 							</p>
 							<p className="text-2xl text-zinc-900 dark:text-zinc-100 font-black uppercase tracking-tighter">
-								{wallet?.status || "PENDING"}
+								{wallet?.setupStatus || "PENDING"}
 							</p>
 						</div>
 					</Card>
@@ -212,10 +232,10 @@ export function Wallet() {
 						</div>
 						<div>
 							<p className="text-xs text-zinc-500 dark:text-zinc-400 mb-1 font-medium uppercase tracking-wider">
-								{wallet?.virtualAccount?.bankName || "No virtual account"}
+								{wallet?.virtualAccounts?.[0]?.bankName || "No virtual account"}
 							</p>
 							<p className="text-2xl text-zinc-900 dark:text-zinc-100 font-black tracking-tighter">
-								{wallet?.virtualAccount?.accountNumber || "N/A"}
+								{wallet?.virtualAccounts?.[0]?.accountNumber || "N/A"}
 							</p>
 						</div>
 					</Card>
@@ -300,8 +320,8 @@ export function Wallet() {
 										</SelectTrigger>
 										<SelectContent className="font-sans rounded-2xl border-none shadow-xl">
 											<SelectItem value="primary">
-												{wallet?.virtualAccount?.bankName || "Primary Account"} (••
-												{wallet?.virtualAccount?.accountNumber?.slice(-4) || "••••"})
+												{wallet?.virtualAccounts?.[0]?.bankName || "Primary Account"} (••
+												{wallet?.virtualAccounts?.[0]?.accountNumber?.slice(-4) || "••••"})
 											</SelectItem>
 										</SelectContent>
 									</Select>
@@ -326,7 +346,7 @@ export function Wallet() {
 					<Button
 						variant="outline"
 						className="h-12 gap-2 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-xl transition-all hover:scale-[1.02] active:scale-95 font-semibold"
-						onClick={() => getMyWallet()}>
+						onClick={handleRefresh}>
 						<RefreshCw className={cn("size-4", loading && "animate-spin")} />
 						Refresh
 					</Button>
