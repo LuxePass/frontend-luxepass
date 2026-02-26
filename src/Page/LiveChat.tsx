@@ -83,7 +83,7 @@ export function LiveChat() {
 
 	// Refs for polling intervals
 	const conversationsPollRef = useRef<ReturnType<typeof setTimeout> | null>(
-		null
+		null,
 	);
 	const messagesPollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -105,9 +105,9 @@ export function LiveChat() {
 					const numericTs = Number(timestamp);
 					if (!isNaN(numericTs)) {
 						date =
-							numericTs < 10_000_000_000
-								? new Date(numericTs * 1000)
-								: new Date(numericTs);
+							numericTs < 10_000_000_000 ?
+								new Date(numericTs * 1000)
+							:	new Date(numericTs);
 					} else {
 						return "";
 					}
@@ -115,9 +115,9 @@ export function LiveChat() {
 			} else {
 				const numericTs = timestamp;
 				date =
-					numericTs < 10_000_000_000
-						? new Date(numericTs * 1000)
-						: new Date(numericTs);
+					numericTs < 10_000_000_000 ?
+						new Date(numericTs * 1000)
+					:	new Date(numericTs);
 			}
 
 			if (isNaN(date.getTime())) {
@@ -146,12 +146,12 @@ export function LiveChat() {
 				});
 			}
 		},
-		[]
+		[],
 	);
 
 	const groupMessagesByDate = useCallback(
 		(
-			messages: ChatMessage[]
+			messages: ChatMessage[],
 		): Array<{ date: string; messages: ChatMessage[] }> => {
 			const groups: Map<string, ChatMessage[]> = new Map();
 
@@ -161,9 +161,9 @@ export function LiveChat() {
 
 				if (message.timestampValue) {
 					timestampValue =
-						typeof message.timestampValue === "string"
-							? Number(message.timestampValue)
-							: message.timestampValue;
+						typeof message.timestampValue === "string" ?
+							Number(message.timestampValue)
+						:	message.timestampValue;
 				} else if (message.timestamp) {
 					// Try to parse timestamp string
 					const date = new Date(message.timestamp);
@@ -201,24 +201,27 @@ export function LiveChat() {
 					return dateA.getTime() - dateB.getTime();
 				});
 		},
-		[getDateLabel]
+		[getDateLabel],
 	);
 
 	const whatsappBackendBaseUrl =
 		import.meta.env.VITE_WHATSAPP_BACKEND_URL ??
 		"https://whatsapp-backend-ix4v.onrender.com/api";
 
-	const backendHeaders = useMemo(
-		() => ({
+	const backendHeaders = useMemo(() => {
+		console.log(
+			"💬 [LiveChat] Using WhatsApp Backend URL:",
+			whatsappBackendBaseUrl,
+		);
+		return {
 			"Content-Type": "application/json",
-		}),
-		[]
-	);
+		};
+	}, [whatsappBackendBaseUrl]);
 
 	const selectedConv = conversations.find((c) => c.id === selectedConversation);
-	const selectedMessages = selectedConversation
-		? messages[selectedConversation] ?? []
-		: [];
+	const selectedMessages = useMemo(() => {
+		return selectedConversation ? (messages[selectedConversation] ?? []) : [];
+	}, [selectedConversation, messages]);
 
 	// Group messages by date
 	const groupedMessages = useMemo(() => {
@@ -244,9 +247,9 @@ export function LiveChat() {
 					const numericTs = Number(timestamp);
 					if (!isNaN(numericTs)) {
 						date =
-							numericTs < 10_000_000_000
-								? new Date(numericTs * 1000)
-								: new Date(numericTs);
+							numericTs < 10_000_000_000 ?
+								new Date(numericTs * 1000)
+							:	new Date(numericTs);
 					} else {
 						return "";
 					}
@@ -255,9 +258,9 @@ export function LiveChat() {
 				// Number timestamp
 				const numericTs = timestamp;
 				date =
-					numericTs < 10_000_000_000
-						? new Date(numericTs * 1000)
-						: new Date(numericTs);
+					numericTs < 10_000_000_000 ?
+						new Date(numericTs * 1000)
+					:	new Date(numericTs);
 			}
 
 			if (isNaN(date.getTime())) {
@@ -269,7 +272,7 @@ export function LiveChat() {
 				minute: "2-digit",
 			});
 		},
-		[]
+		[],
 	);
 
 	/**
@@ -305,6 +308,8 @@ export function LiveChat() {
 					method: "GET",
 				});
 
+				console.log("📡 [LiveChat] Fetch Response Status:", response.status);
+
 				if (!response.ok) {
 					const body = await response.json().catch(() => ({}));
 					const errorMessage =
@@ -317,6 +322,8 @@ export function LiveChat() {
 					data?: ConversationApiItem[];
 					error?: string;
 				};
+
+				console.log("📦 [LiveChat] Fetch Payload:", payload);
 
 				// Handle different response formats
 				let rawItems: ConversationApiItem[] = [];
@@ -333,14 +340,14 @@ export function LiveChat() {
 					// Use conversation ID if available, otherwise generate a stable ID from phone number
 					const stableId =
 						conv.id ??
-						(conv.clientPhone
-							? conv.clientPhone.replace(/\D/g, "")
-							: `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+						(conv.clientPhone ?
+							conv.clientPhone.replace(/\D/g, "")
+						:	`${Date.now()}-${Math.random().toString(36).slice(2)}`);
 					const timestamp =
 						conv.lastMessageTime ??
-						(conv.lastMessageTimestamp
-							? normalizeTimestamp(conv.lastMessageTimestamp)
-							: "");
+						(conv.lastMessageTimestamp ?
+							normalizeTimestamp(conv.lastMessageTimestamp)
+						:	"");
 
 					return {
 						id: stableId,
@@ -429,9 +436,9 @@ export function LiveChat() {
 			} catch (err) {
 				console.error("Error fetching conversations:", err);
 				const errorMessage =
-					err instanceof Error
-						? err.message
-						: "Something went wrong fetching conversations.";
+					err instanceof Error ?
+						err.message
+					:	"Something went wrong fetching conversations.";
 
 				// Only set error if we don't have existing data (don't clear on refresh errors)
 				setConversations((prev) => {
@@ -439,7 +446,7 @@ export function LiveChat() {
 					if (prev.length > 0) {
 						console.warn(
 							"Failed to refresh conversations, keeping existing data:",
-							errorMessage
+							errorMessage,
 						);
 						return prev;
 					}
@@ -466,7 +473,7 @@ export function LiveChat() {
 			normalizeTimestamp,
 			whatsappBackendBaseUrl,
 			selectedConversation,
-		]
+		],
 	);
 
 	/**
@@ -486,7 +493,7 @@ export function LiveChat() {
 					{
 						headers: backendHeaders,
 						method: "GET",
-					}
+					},
 				);
 
 				if (!response.ok) {
@@ -527,16 +534,16 @@ export function LiveChat() {
 
 					if (msg.timestampValue !== undefined) {
 						timestampValue =
-							typeof msg.timestampValue === "string"
-								? Number(msg.timestampValue)
-								: msg.timestampValue;
+							typeof msg.timestampValue === "string" ?
+								Number(msg.timestampValue)
+							:	msg.timestampValue;
 
 						if (!isNaN(timestampValue)) {
 							// Convert to Date and format
 							const date =
-								timestampValue < 10_000_000_000
-									? new Date(timestampValue * 1000)
-									: new Date(timestampValue);
+								timestampValue < 10_000_000_000 ?
+									new Date(timestampValue * 1000)
+								:	new Date(timestampValue);
 							if (!isNaN(date.getTime())) {
 								timestampStr = normalizeTimestamp(date);
 								if (!timestampValue || timestampValue < 10_000_000_000) {
@@ -641,12 +648,12 @@ export function LiveChat() {
 					});
 
 					// Only update if something changed
-					return hasChanges || merged.length !== prevMessages.length
-						? {
+					return hasChanges || merged.length !== prevMessages.length ?
+							{
 								...prev,
 								[conversationId]: merged,
-						  }
-						: prev;
+							}
+						:	prev;
 				});
 
 				setLastMessageFetch((prev) => ({
@@ -656,9 +663,9 @@ export function LiveChat() {
 			} catch (err) {
 				console.error("Error fetching messages:", err);
 				const errorMessage =
-					err instanceof Error
-						? err.message
-						: "Something went wrong fetching messages.";
+					err instanceof Error ?
+						err.message
+					:	"Something went wrong fetching messages.";
 
 				// Preserve existing messages on error (don't clear)
 				setMessages((prev) => {
@@ -666,7 +673,7 @@ export function LiveChat() {
 					if (existingMessages.length > 0) {
 						console.warn(
 							"Failed to refresh messages, keeping existing data:",
-							errorMessage
+							errorMessage,
 						);
 						return prev;
 					}
@@ -687,7 +694,7 @@ export function LiveChat() {
 				}
 			}
 		},
-		[backendHeaders, normalizeTimestamp, whatsappBackendBaseUrl]
+		[backendHeaders, normalizeTimestamp, whatsappBackendBaseUrl],
 	);
 
 	/**
@@ -697,9 +704,9 @@ export function LiveChat() {
 		setIsRefreshing(true);
 		await Promise.all([
 			fetchConversations(false),
-			selectedConversation
-				? fetchMessages(selectedConversation, false)
-				: Promise.resolve(),
+			selectedConversation ?
+				fetchMessages(selectedConversation, false)
+			:	Promise.resolve(),
 		]);
 		setIsRefreshing(false);
 		customToast.success({
@@ -736,7 +743,7 @@ export function LiveChat() {
 				normalizedPhone.length > 15
 			) {
 				throw new Error(
-					`Invalid phone number format: ${conv.clientPhone}. Phone number must be 10-15 digits.`
+					`Invalid phone number format: ${conv.clientPhone}. Phone number must be 10-15 digits.`,
 				);
 			}
 
@@ -809,14 +816,14 @@ export function LiveChat() {
 			// Update conversation last message
 			setConversations((prev) =>
 				prev.map((c) =>
-					c.id === selectedConversation
-						? {
-								...c,
-								lastMessage: inputMessage.trim(),
-								lastMessageTime: timestamp,
-						  }
-						: c
-				)
+					c.id === selectedConversation ?
+						{
+							...c,
+							lastMessage: inputMessage.trim(),
+							lastMessageTime: timestamp,
+						}
+					:	c,
+				),
 			);
 
 			setInputMessage("");
@@ -913,7 +920,7 @@ export function LiveChat() {
 			// Fetch messages immediately when conversation is selected
 			void fetchMessages(conversationId, false);
 		},
-		[fetchMessages]
+		[fetchMessages],
 	);
 
 	/**
@@ -932,7 +939,7 @@ export function LiveChat() {
 				{
 					method: "POST",
 					headers: backendHeaders,
-				}
+				},
 			);
 
 			if (!response.ok) {
@@ -1021,7 +1028,7 @@ export function LiveChat() {
 				{
 					method: "POST",
 					headers: backendHeaders,
-				}
+				},
 			).catch((err) => console.error("Error marking as read:", err));
 		}
 	}, [selectedConversation]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -1077,7 +1084,7 @@ export function LiveChat() {
 			<div
 				className={cn(
 					"w-full lg:w-80 border-b lg:border-b-0 lg:border-r border-zinc-200 dark:border-zinc-800 flex flex-col shrink-0 lg:h-full",
-					showChat && "hidden lg:flex"
+					showChat && "hidden lg:flex",
 				)}>
 				<div className="p-3 lg:p-4 border-b border-zinc-200 dark:border-zinc-800 shrink-0">
 					<div className="flex items-center justify-between mb-1">
@@ -1127,7 +1134,7 @@ export function LiveChat() {
 								className={cn(
 									"w-full p-3 rounded-lg text-left transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-800/80",
 									selectedConversation === conv.id &&
-										"bg-zinc-100 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700"
+										"bg-zinc-100 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700",
 								)}>
 								<div className="flex items-start gap-3">
 									<Avatar className="size-10 border border-zinc-300 dark:border-zinc-700 shrink-0">
@@ -1161,9 +1168,9 @@ export function LiveChat() {
 			<div
 				className={cn(
 					"flex-1 flex flex-col min-h-0 h-full lg:h-auto",
-					!showChat && "hidden lg:flex"
+					!showChat && "hidden lg:flex",
 				)}>
-				{selectedConv ? (
+				{selectedConv ?
 					<>
 						{/* Chat Header */}
 						<div className="p-3 lg:p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between shrink-0">
@@ -1283,39 +1290,38 @@ export function LiveChat() {
 												key={message.id}
 												className={cn(
 													"flex gap-2 lg:gap-3",
-													message.sender === "pa" && "flex-row-reverse"
+													message.sender === "pa" && "flex-row-reverse",
 												)}>
 												<Avatar className="size-8 shrink-0">
 													<AvatarFallback
 														className={cn(
-															message.sender === "client"
-																? "bg-gradient-to-br from-green-600 to-emerald-600"
-																: message.isBot
-																? "bg-zinc-500 dark:bg-zinc-600"
-																: "bg-gradient-to-br from-violet-600 to-purple-600",
-															"text-xs"
+															message.sender === "client" ?
+																"bg-gradient-to-br from-green-600 to-emerald-600"
+															: message.isBot ? "bg-zinc-500 dark:bg-zinc-600"
+															: "bg-gradient-to-br from-violet-600 to-purple-600",
+															"text-xs",
 														)}>
-														{message.sender === "client"
-															? getInitials(message.clientName ?? "Client")
-															: message.isBot
-															? "SYS"
-															: "PA"}
+														{message.sender === "client" ?
+															getInitials(message.clientName ?? "Client")
+														: message.isBot ?
+															"SYS"
+														:	"PA"}
 													</AvatarFallback>
 												</Avatar>
 
 												<div
 													className={cn(
 														"flex flex-col max-w-[85%] lg:max-w-md",
-														message.sender === "pa" && "items-end"
+														message.sender === "pa" && "items-end",
 													)}>
 													<div
 														className={cn(
 															"inline-block rounded-lg p-3 border",
-															message.sender === "client"
-																? "bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100"
-																: message.isBot
-																? "bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-500 italic"
-																: "bg-green-600 dark:bg-green-700 border-green-700 dark:border-green-800 text-white"
+															message.sender === "client" ?
+																"bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100"
+															: message.isBot ?
+																"bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-500 italic"
+															:	"bg-green-600 dark:bg-green-700 border-green-700 dark:border-green-800 text-white",
 														)}>
 														{message.isBot && (
 															<div className="flex items-center gap-1 mb-1 text-xs font-medium uppercase tracking-wider opacity-70">
@@ -1374,14 +1380,13 @@ export function LiveChat() {
 							</div>
 						)}
 					</>
-				) : (
-					<div className="flex-1 flex items-center justify-center p-8">
+				:	<div className="flex-1 flex items-center justify-center p-8">
 						<div className="text-center">
 							<MessageCircle className="size-12 mx-auto mb-3 text-zinc-300 dark:text-zinc-700" />
 							<p className="text-zinc-400">Select a conversation to start chatting</p>
 						</div>
 					</div>
-				)}
+				}
 			</div>
 		</Card>
 	);

@@ -23,12 +23,15 @@ export function useChat() {
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
-	const backendHeaders = useMemo(
-		() => ({
+	const backendHeaders = useMemo(() => {
+		console.log(
+			"💬 [useChat] Using WhatsApp Backend URL:",
+			whatsappBackendBaseUrl,
+		);
+		return {
 			"Content-Type": "application/json",
-		}),
-		[]
-	);
+		};
+	}, []);
 
 	const normalizeTimestamp = useCallback(
 		(timestamp?: string | number | Date) => {
@@ -42,17 +45,17 @@ export function useChat() {
 					const numericTs = Number(timestamp);
 					if (!isNaN(numericTs)) {
 						date =
-							numericTs < 10_000_000_000
-								? new Date(numericTs * 1000)
-								: new Date(numericTs);
+							numericTs < 10_000_000_000 ?
+								new Date(numericTs * 1000)
+							:	new Date(numericTs);
 					} else return "";
 				}
 			} else {
 				const numericTs = timestamp;
 				date =
-					numericTs < 10_000_000_000
-						? new Date(numericTs * 1000)
-						: new Date(numericTs);
+					numericTs < 10_000_000_000 ?
+						new Date(numericTs * 1000)
+					:	new Date(numericTs);
 			}
 			if (isNaN(date.getTime())) return "";
 			return date.toLocaleTimeString("en-US", {
@@ -60,7 +63,7 @@ export function useChat() {
 				minute: "2-digit",
 			});
 		},
-		[]
+		[],
 	);
 
 	const fetchConversations = useCallback(
@@ -77,11 +80,12 @@ export function useChat() {
 				if (!response.ok) {
 					const body = await response.json().catch(() => ({}));
 					throw new Error(
-						body?.error?.message || body?.error || "Unable to fetch conversations"
+						body?.error?.message || body?.error || "Unable to fetch conversations",
 					);
 				}
 
 				const payload = await response.json();
+				console.log(payload);
 				let rawItems: ConversationApiItem[] = [];
 				if (Array.isArray(payload)) rawItems = payload;
 				else if (payload.success && Array.isArray(payload.data))
@@ -100,9 +104,9 @@ export function useChat() {
 						lastMessage: conv.lastMessage ?? "",
 						lastMessageTime:
 							conv.lastMessageTime ??
-							(conv.lastMessageTimestamp
-								? normalizeTimestamp(conv.lastMessageTimestamp)
-								: ""),
+							(conv.lastMessageTimestamp ?
+								normalizeTimestamp(conv.lastMessageTimestamp)
+							:	""),
 						unreadCount: conv.unreadCount ?? 0,
 						status: conv.status ?? "active",
 					};
@@ -112,13 +116,13 @@ export function useChat() {
 			} catch (err) {
 				console.error("Error fetching conversations:", err);
 				setError(
-					err instanceof Error ? err.message : "Failed to fetch conversations"
+					err instanceof Error ? err.message : "Failed to fetch conversations",
 				);
 			} finally {
 				if (!silent) setLoading(false);
 			}
 		},
-		[backendHeaders, normalizeTimestamp]
+		[backendHeaders, normalizeTimestamp],
 	);
 
 	return {
