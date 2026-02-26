@@ -78,7 +78,7 @@ export function ClientDetails({ clientId, onClose }: ClientDetailsProps) {
 			await initiateTransfer({
 				amount: withdrawAmount,
 				narration: withdrawNarration,
-				userIdentifier: clientId,
+				userIdentifier: client?.uniqueId || clientId,
 			});
 
 			toast.success("Withdrawal initiated successfully");
@@ -216,7 +216,7 @@ export function ClientDetails({ clientId, onClose }: ClientDetailsProps) {
 									size="sm"
 									variant="outline"
 									className="gap-2"
-									onClick={() => navigate(`/wallet/${clientId}`)}>
+									onClick={() => navigate(`/wallet/${client.uniqueId || clientId}`)}>
 									<WalletIcon className="size-4" />
 									View Wallet
 								</Button>

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { cn } from "../utils";
 import { customToast } from "./CustomToast";
@@ -262,7 +263,10 @@ export function ReferralProgram() {
 	useEffect(() => {
 		const fetchReferralData = async () => {
 			try {
-				const response = await fetch("http://localhost:3500/api/referrals/stats");
+				const backendUrl =
+					import.meta.env.VITE_WHATSAPP_BACKEND_URL ||
+					"https://mysound-whatsapp-backend.onrender.com";
+				const response = await fetch(`${backendUrl}/api/referrals/stats`);
 				const data = await response.json();
 
 				if (data.success) {
@@ -284,7 +288,7 @@ export function ReferralProgram() {
 							tierLevel: 1,
 							totalSpent: 0,
 							lifetimeValue: 0,
-						})
+						}),
 					);
 
 					// Transform Client Stats (Top Referrers)
@@ -301,7 +305,7 @@ export function ReferralProgram() {
 							joinDate: "2025-01-01", // Placeholder
 							referralTier: "bronze",
 							conversionRate: 0,
-						})
+						}),
 					);
 
 					setActivities(newActivities);
@@ -339,7 +343,7 @@ export function ReferralProgram() {
 	});
 
 	const filteredClientStats = clientStats.filter((client) =>
-		client.clientName.toLowerCase().includes(searchQuery.toLowerCase())
+		client.clientName.toLowerCase().includes(searchQuery.toLowerCase()),
 	);
 
 	const totalStats = {
@@ -348,19 +352,19 @@ export function ReferralProgram() {
 		pendingReferrals: activities.filter((a) => a.status === "pending").length,
 		totalRewardsPaid: activities.reduce(
 			(sum, a) => (a.rewardStatus === "paid" ? sum + a.rewardAmount : sum),
-			0
+			0,
 		),
 		totalRewardsPending: activities.reduce(
 			(sum, a) =>
-				a.rewardStatus === "processing" || a.rewardStatus === "pending"
-					? sum + a.rewardAmount
-					: sum,
-			0
+				a.rewardStatus === "processing" || a.rewardStatus === "pending" ?
+					sum + a.rewardAmount
+				:	sum,
+			0,
 		),
 		totalLifetimeValue: activities.reduce((sum, a) => sum + a.lifetimeValue, 0),
 		avgConversionRate: Math.round(
 			clientStats.reduce((sum, c) => sum + c.conversionRate, 0) /
-				clientStats.length
+				clientStats.length,
 		),
 	};
 
@@ -750,9 +754,9 @@ export function ReferralProgram() {
 															<span
 																className={cn(
 																	"text-xs whitespace-nowrap",
-																	activity.rewardAmount > 0
-																		? "text-green-600 dark:text-green-400"
-																		: "text-zinc-500"
+																	activity.rewardAmount > 0 ?
+																		"text-green-600 dark:text-green-400"
+																	:	"text-zinc-500",
 																)}>
 																₦{activity.rewardAmount}
 															</span>
@@ -871,9 +875,9 @@ export function ReferralProgram() {
 														<p
 															className={cn(
 																"text-sm",
-																activity.rewardAmount > 0
-																	? "text-green-600 dark:text-green-400"
-																	: "text-zinc-500"
+																activity.rewardAmount > 0 ?
+																	"text-green-600 dark:text-green-400"
+																:	"text-zinc-500",
 															)}>
 															₦{activity.rewardAmount}
 														</p>
@@ -987,7 +991,7 @@ export function ReferralProgram() {
 									{/* Build referral tree */}
 									{clientStats.map((client) => {
 										const clientReferrals = activities.filter(
-											(a) => a.referrerName === client.clientName
+											(a) => a.referrerName === client.clientName,
 										);
 
 										if (clientReferrals.length === 0) return null;
@@ -1037,9 +1041,9 @@ export function ReferralProgram() {
 																<span
 																	className={cn(
 																		"text-sm whitespace-nowrap",
-																		referral.rewardAmount > 0
-																			? "text-green-600 dark:text-green-400"
-																			: "text-zinc-500"
+																		referral.rewardAmount > 0 ?
+																			"text-green-600 dark:text-green-400"
+																		:	"text-zinc-500",
 																	)}>
 																	₦{referral.rewardAmount}
 																</span>
@@ -1129,9 +1133,9 @@ export function ReferralProgram() {
 									<p
 										className={cn(
 											"text-sm",
-											selectedActivity.rewardAmount > 0
-												? "text-green-400"
-												: "text-zinc-500"
+											selectedActivity.rewardAmount > 0 ?
+												"text-green-400"
+											:	"text-zinc-500",
 										)}>
 										₦{selectedActivity.rewardAmount}
 									</p>
