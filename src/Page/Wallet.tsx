@@ -47,8 +47,15 @@ import { useParams } from "react-router-dom";
 
 export function Wallet() {
 	const { userId } = useParams();
-	const { wallet, getMyWallet, getUserWallet, initiateTransfer, loading } =
-		useWallet();
+	const {
+		wallet,
+		getMyWallet,
+		getUserWallet,
+		fetchSavedBankAccounts,
+		savedBankAccounts,
+		initiateTransfer,
+		loading,
+	} = useWallet();
 	const [balanceVisible, setBalanceVisible] = useState(true);
 	const [activeTab, setActiveTab] = useState("overview");
 	const [withdrawDialogOpen, setWithdrawDialogOpen] = useState(false);
@@ -57,14 +64,17 @@ export function Wallet() {
 	const [narration, setNarration] = useState("");
 	const [securityAnswer, setSecurityAnswer] = useState("");
 	const [withdrawing, setWithdrawing] = useState(false);
+	const [selectedAccountId, setSelectedAccountId] = useState("primary");
 
 	useEffect(() => {
 		if (userId) {
 			getUserWallet(userId);
+			// Also fetch saved accounts from WhatsApp backend
+			fetchSavedBankAccounts(userId);
 		} else {
 			getMyWallet();
 		}
-	}, [getMyWallet, getUserWallet, userId]);
+	}, [getMyWallet, getUserWallet, fetchSavedBankAccounts, userId]);
 
 	const totalBalance = parseFloat(wallet?.balance || "0");
 
@@ -312,7 +322,9 @@ export function Wallet() {
 										className="text-xs font-bold uppercase tracking-widest text-zinc-400">
 										Destination Account
 									</Label>
-									<Select>
+									<Select
+										value={selectedAccountId}
+										onValueChange={setSelectedAccountId}>
 										<SelectTrigger
 											id="account"
 											className="h-14 bg-zinc-50 dark:bg-zinc-800 border-none focus-visible:ring-2 focus-visible:ring-violet-500 rounded-2xl">
@@ -323,6 +335,14 @@ export function Wallet() {
 												{wallet?.virtualAccounts?.[0]?.bankName || "Primary Account"} (••
 												{wallet?.virtualAccounts?.[0]?.accountNumber?.slice(-4) || "••••"})
 											</SelectItem>
+											{savedBankAccounts.map((account, idx) => (
+												<SelectItem
+													key={`${account.accountNumber}-${idx}`}
+													value={`${account.accountNumber}`}>
+													{account.bankName} (••
+													{account.accountNumber?.slice(-4)}) - {account.accountName}
+												</SelectItem>
+											))}
 										</SelectContent>
 									</Select>
 								</div>
