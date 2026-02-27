@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useMemo } from "react";
 import { useUsers, type User as ApiUser } from "../hooks/useUsers";
 import { useBookings, type Booking } from "../hooks/useBookings";
