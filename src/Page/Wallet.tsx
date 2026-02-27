@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from "react";
 import { useWallet } from "../hooks/useWallet";
 import { Card } from "../components/ui/card";
@@ -186,9 +187,6 @@ export function Wallet() {
 						</div>
 						<div className="relative z-10">
 							<div className="flex items-start justify-between mb-6">
-								<div className="p-2.5 rounded-xl bg-white/20 backdrop-blur-md">
-									<WalletIcon className="size-6" />
-								</div>
 								<Badge className="bg-white/20 text-white border-0 hover:bg-white/30 backdrop-blur-md px-3 py-1">
 									Available Funds
 								</Badge>
