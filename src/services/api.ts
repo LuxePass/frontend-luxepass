@@ -16,20 +16,12 @@ api.interceptors.request.use(
 		const token = localStorage.getItem("accessToken");
 		if (token) {
 			config.headers.Authorization = `Bearer ${token}`;
-			console.log(`🚀 [API] ${config.method?.toUpperCase()} ${config.url}`, {
-				headers: config.headers,
-				tokenPrefix: token.substring(0, 10) + "...",
-			});
-		} else {
-			console.warn(
-				`⚠️ [API] ${config.method?.toUpperCase()} ${config.url} - NO TOKEN`
-			);
 		}
 		return config;
 	},
 	(error) => {
 		return Promise.reject(error);
-	}
+	},
 );
 
 // Response interceptor to handle token refresh and common errors
@@ -72,17 +64,11 @@ api.interceptors.response.use(
 		// Handle 403 Forbidden (permission denied)
 		// Don't logout - this is a permission issue, not an auth issue
 		if (error.response?.status === 403) {
-			console.warn(
-				"Permission denied for:",
-				originalRequest.url,
-				"- User may lack required permissions"
-			);
 			// Let the calling component handle this gracefully
-			// Don't redirect or logout
 		}
 
 		return Promise.reject(error);
-	}
+	},
 );
 
 export default api;

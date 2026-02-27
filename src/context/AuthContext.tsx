@@ -11,7 +11,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
 	const [user, setUser] = useState<User | null>(null);
 	const [accessToken, setAccessToken] = useState<string | null>(
-		localStorage.getItem("accessToken")
+		localStorage.getItem("accessToken"),
 	);
 	const [loading, setLoading] = useState(false);
 	const [initialized, setInitialized] = useState(false);
@@ -57,13 +57,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 			setLoading(true);
 			try {
 				const response = await api.post("/auth/pa/login", { email, password });
-				// Log the raw response to see structure
-				console.log("🔐 Raw Login Response:", response.data);
 
 				const { data } = response.data;
 
 				if (data.requiresTwoFactor) {
-					console.log("🔐 2FA Required");
 					return {
 						requiresTwoFactor: true,
 						tempToken: data.tempToken,
@@ -72,12 +69,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
 				const { tokens, pa } = data;
 
-				// Critical Debug: Check exactly what PA object looks like
-				console.log(
-					"🔐 Login successful - Full PA Object:",
-					JSON.stringify(pa, null, 2)
-				);
-
 				setAccessToken(tokens.accessToken);
 				setUser(pa);
 
@@ -85,9 +76,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				localStorage.setItem("refreshToken", tokens.refreshToken);
 				localStorage.setItem("user", JSON.stringify(pa));
 
-				api.defaults.headers.common[
-					"Authorization"
-				] = `Bearer ${tokens.accessToken}`;
+				api.defaults.headers.common["Authorization"] =
+					`Bearer ${tokens.accessToken}`;
 
 				return { requiresTwoFactor: false };
 			} catch (error) {
@@ -97,7 +87,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				setLoading(false);
 			}
 		},
-		[]
+		[],
 	);
 
 	const verify2FA = useCallback(async (tempToken: string, totpCode: string) => {
@@ -109,11 +99,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 			});
 			const { tokens, pa } = response.data.data;
 
-			console.log(
-				"🔐 2FA Verified - Full PA Object:",
-				JSON.stringify(pa, null, 2)
-			);
-
 			setAccessToken(tokens.accessToken);
 			setUser(pa);
 
@@ -121,9 +106,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 			localStorage.setItem("refreshToken", tokens.refreshToken);
 			localStorage.setItem("user", JSON.stringify(pa));
 
-			api.defaults.headers.common[
-				"Authorization"
-			] = `Bearer ${tokens.accessToken}`;
+			api.defaults.headers.common["Authorization"] =
+				`Bearer ${tokens.accessToken}`;
 		} catch (error) {
 			console.error("2FA verification failed", error);
 			throw error;
@@ -144,7 +128,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				throw error;
 			}
 		},
-		[]
+		[],
 	);
 
 	const value = useMemo(
@@ -167,7 +151,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 			changePassword,
 			login,
 			verify2FA,
-		]
+		],
 	);
 
 	return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

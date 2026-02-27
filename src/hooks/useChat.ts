@@ -23,15 +23,12 @@ export function useChat() {
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
-	const backendHeaders = useMemo(() => {
-		console.log(
-			"💬 [useChat] Using WhatsApp Backend URL:",
-			whatsappBackendBaseUrl,
-		);
-		return {
+	const backendHeaders = useMemo(
+		() => ({
 			"Content-Type": "application/json",
-		};
-	}, []);
+		}),
+		[],
+	);
 
 	const normalizeTimestamp = useCallback(
 		(timestamp?: string | number | Date) => {
@@ -85,7 +82,6 @@ export function useChat() {
 				}
 
 				const payload = await response.json();
-				console.log(payload);
 				let rawItems: ConversationApiItem[] = [];
 				if (Array.isArray(payload)) rawItems = payload;
 				else if (payload.success && Array.isArray(payload.data))
@@ -114,7 +110,6 @@ export function useChat() {
 
 				setConversations(normalized);
 			} catch (err) {
-				console.error("Error fetching conversations:", err);
 				setError(
 					err instanceof Error ? err.message : "Failed to fetch conversations",
 				);

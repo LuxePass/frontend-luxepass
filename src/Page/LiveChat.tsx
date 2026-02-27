@@ -208,15 +208,12 @@ export function LiveChat() {
 		import.meta.env.VITE_WHATSAPP_BACKEND_URL ??
 		"https://whatsapp-backend-ix4v.onrender.com/api";
 
-	const backendHeaders = useMemo(() => {
-		console.log(
-			"💬 [LiveChat] Using WhatsApp Backend URL:",
-			whatsappBackendBaseUrl,
-		);
-		return {
+	const backendHeaders = useMemo(
+		() => ({
 			"Content-Type": "application/json",
-		};
-	}, [whatsappBackendBaseUrl]);
+		}),
+		[whatsappBackendBaseUrl],
+	);
 
 	const selectedConv = conversations.find((c) => c.id === selectedConversation);
 	const selectedMessages = useMemo(() => {
@@ -307,15 +304,6 @@ export function LiveChat() {
 					headers: backendHeaders,
 					method: "GET",
 				});
-
-				console.log("📡 [LiveChat] Fetch Response Status:", response.status);
-
-				if (!response.ok) {
-					const body = await response.json().catch(() => ({}));
-					const errorMessage =
-						body?.error?.message || body?.error || "Unable to fetch conversations";
-					throw new Error(errorMessage);
-				}
 
 				const payload = (await response.json()) as {
 					success?: boolean;
@@ -434,7 +422,6 @@ export function LiveChat() {
 					setSelectedConversation(normalized[0].id);
 				}
 			} catch (err) {
-				console.error("Error fetching conversations:", err);
 				const errorMessage =
 					err instanceof Error ?
 						err.message
@@ -444,10 +431,6 @@ export function LiveChat() {
 				setConversations((prev) => {
 					// If we have existing conversations, keep them and just log the error
 					if (prev.length > 0) {
-						console.warn(
-							"Failed to refresh conversations, keeping existing data:",
-							errorMessage,
-						);
 						return prev;
 					}
 					// Only set error if we have no data
@@ -661,7 +644,6 @@ export function LiveChat() {
 					[conversationId]: Date.now(),
 				}));
 			} catch (err) {
-				console.error("Error fetching messages:", err);
 				const errorMessage =
 					err instanceof Error ?
 						err.message
@@ -671,10 +653,6 @@ export function LiveChat() {
 				setMessages((prev) => {
 					const existingMessages = prev[conversationId] ?? [];
 					if (existingMessages.length > 0) {
-						console.warn(
-							"Failed to refresh messages, keeping existing data:",
-							errorMessage,
-						);
 						return prev;
 					}
 					return prev;

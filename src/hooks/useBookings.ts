@@ -41,8 +41,6 @@ export function useBookings() {
 				// Use explicit query params formatting as per user suggestion to avoid 404
 				let url = "/bookings";
 				if (params) {
-					console.log("🚀 [useBookings] Fetching bookings with params:", params);
-
 					const query = new URLSearchParams();
 					if (params.page) query.append("page", params.page.toString());
 					if (params.limit) query.append("limit", params.limit.toString());
@@ -51,16 +49,6 @@ export function useBookings() {
 
 					// Handle userId specially to ensure we support both UUID and uniqueId
 					if (params.userId) {
-						// Log what kind of ID we're sending
-						const isUuid =
-							/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-								params.userId
-							);
-						console.log(
-							`🚀 [useBookings] Using ${isUuid ? "UUID" : "UniqueId"}: ${
-								params.userId
-							}`
-						);
 						query.append("userId", params.userId);
 					}
 
@@ -68,20 +56,18 @@ export function useBookings() {
 					if (queryString) {
 						url += `?${queryString}`;
 					}
-					console.log(`🚀 [useBookings] Request URL: ${url}`);
 				}
 				return await request(api.get(url));
 			} catch (error: unknown) {
 				// Handle 403 permission errors gracefully
 				const err = error as { response?: { status?: number } };
 				if (err?.response?.status === 403) {
-					console.warn("Permission denied: Cannot access bookings");
 					return { data: [], meta: null };
 				}
 				throw error;
 			}
 		},
-		[request]
+		[request],
 	);
 
 	const getBookingById = useCallback(async (id: string) => {
@@ -97,7 +83,7 @@ export function useBookings() {
 			});
 			return response.data?.data;
 		},
-		[]
+		[],
 	);
 
 	const confirmBooking = useCallback(async (id: string) => {
