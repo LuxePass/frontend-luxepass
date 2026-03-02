@@ -275,16 +275,16 @@ export function ReferralProgram() {
 						(item: Record<string, any>, index: number) => ({
 							id: item._id || `ref-${index}`,
 							referrerId: item.referredBy,
-							referrerName: item.referredBy, // We only have the code initially, could map if we fetched referrers
+							referrerName: item.referredBy || "Unknown",
 							referredId: item._id,
 							referredName: item.name || "Unknown",
 							referredEmail: item.email || "N/A",
 							referredPhone: item.phoneNumber,
 							dateReferred: new Date(item.createdAt).toISOString().split("T")[0],
 							dateJoined: new Date(item.createdAt).toISOString().split("T")[0],
-							status: "joined", // Default since they exist in User DB
-							rewardStatus: "pending",
-							rewardAmount: 0,
+							status: "joined",
+							rewardStatus: item.rewardsEarned > 0 ? "pending" : "paid",
+							rewardAmount: item.rewardsEarned || 0,
 							tierLevel: 1,
 							totalSpent: 0,
 							lifetimeValue: 0,
@@ -299,12 +299,12 @@ export function ReferralProgram() {
 							totalReferrals: item.count,
 							successfulReferrals: item.count,
 							pendingReferrals: 0,
-							totalRewardsEarned: 0,
-							pendingRewards: 0,
+							totalRewardsEarned: item.rewardsEarned || 0,
+							pendingRewards: item.rewardsEarned || 0,
 							lifetimeValueGenerated: 0,
-							joinDate: "2025-01-01", // Placeholder
+							joinDate: "2025-01-01",
 							referralTier: "bronze",
-							conversionRate: 0,
+							conversionRate: 100,
 						}),
 					);
 
@@ -317,7 +317,6 @@ export function ReferralProgram() {
 					title: "Error",
 					description: "Failed to load referral data",
 				});
-				// Fallback to mock data on error for demo purposes if needed, or leave empty
 				setActivities(mockActivities);
 				setClientStats(mockClientStats);
 			} finally {
@@ -327,6 +326,46 @@ export function ReferralProgram() {
 
 		fetchReferralData();
 	}, []);
+
+	const handleProcessReward = async (id: string) => {
+		try {
+			const activity = activities.find((a) => a.id === id);
+			if (!activity) return;
+
+			const backendUrl =
+				import.meta.env.VITE_WHATSAPP_BACKEND_URL ||
+				"https://mysound-whatsapp-backend.onrender.com";
+
+			const response = await fetch(`${backendUrl}/api/referrals/process`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({
+					userId: activity.referredId,
+					amount: activity.rewardAmount,
+				}),
+			});
+
+			const data = await response.json();
+
+			if (data.success) {
+				customToast.success({
+					title: "Reward Processed",
+					description: data.message,
+				});
+				// Refresh data
+				window.location.reload();
+			} else {
+				throw new Error(data.message);
+			}
+		} catch (error: any) {
+			customToast.error({
+				title: "Error",
+				description: error.message || "Failed to process reward",
+			});
+		}
+	};
 
 	const filteredActivities = activities.filter((activity) => {
 		const matchesSearch =
@@ -355,10 +394,7 @@ export function ReferralProgram() {
 			0,
 		),
 		totalRewardsPending: activities.reduce(
-			(sum, a) =>
-				a.rewardStatus === "processing" || a.rewardStatus === "pending" ?
-					sum + a.rewardAmount
-				:	sum,
+			(sum, a) => (a.rewardStatus === "pending" ? sum + a.rewardAmount : sum),
 			0,
 		),
 		totalLifetimeValue: activities.reduce((sum, a) => sum + a.lifetimeValue, 0),
@@ -444,13 +480,6 @@ export function ReferralProgram() {
 			setSelectedActivity(activity);
 			setDetailsDialogOpen(true);
 		}
-	};
-
-	const handleProcessReward = (id: string) => {
-		customToast.success({
-			title: "Reward Processing",
-			description: "Reward has been marked for processing",
-		});
 	};
 
 	const handleExport = () => {
