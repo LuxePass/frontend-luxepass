@@ -275,7 +275,7 @@ export function ReferralProgram() {
 						(item: Record<string, any>, index: number) => ({
 							id: item._id || `ref-${index}`,
 							referrerId: item.referredBy,
-							referrerName: item.referredBy || "Unknown",
+							referrerName: item.referrerName || item.referredBy || "Unknown",
 							referredId: item._id,
 							referredName: item.name || "Unknown",
 							referredEmail: item.email || "N/A",
