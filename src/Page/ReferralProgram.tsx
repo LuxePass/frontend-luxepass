@@ -84,170 +84,6 @@ interface ClientReferralStats {
 	conversionRate: number;
 }
 
-const mockActivities: ReferralActivity[] = [
-	{
-		id: "1",
-		referrerId: "r1",
-		referrerName: "Adaeze Nnamdi",
-		referredId: "c1",
-		referredName: "Chidinma Okonkwo",
-		referredEmail: "chidinma.okonkwo@email.com",
-		referredPhone: "+234 (0)803 456 7890",
-		dateReferred: "2025-09-15",
-		dateJoined: "2025-09-16",
-		status: "active",
-		rewardStatus: "paid",
-		rewardAmount: 500,
-		tierLevel: 1,
-		totalSpent: 45000,
-		lifetimeValue: 45000,
-	},
-	{
-		id: "2",
-		referrerId: "c1",
-		referrerName: "Chidinma Okonkwo",
-		referredId: "c2",
-		referredName: "Emeka Adeleke",
-		referredEmail: "emeka.adeleke@email.com",
-		referredPhone: "+234 (0)805 123 4567",
-		dateReferred: "2025-10-01",
-		dateJoined: "2025-10-02",
-		status: "active",
-		rewardStatus: "paid",
-		rewardAmount: 250,
-		tierLevel: 2,
-		totalSpent: 28000,
-		lifetimeValue: 28000,
-	},
-	{
-		id: "3",
-		referrerId: "r1",
-		referrerName: "Adaeze Nnamdi",
-		referredId: "c3",
-		referredName: "Amara Nwosu",
-		referredEmail: "amara.nwosu@email.com",
-		referredPhone: "+234 (0)816 789 0123",
-		dateReferred: "2025-10-10",
-		dateJoined: "2025-10-11",
-		status: "active",
-		rewardStatus: "processing",
-		rewardAmount: 250,
-		tierLevel: 1,
-		totalSpent: 22000,
-		lifetimeValue: 22000,
-	},
-	{
-		id: "4",
-		referrerId: "c2",
-		referrerName: "Emeka Adeleke",
-		referredId: "c4",
-		referredName: "Chukwudi Okafor",
-		referredEmail: "chukwudi.okafor@email.com",
-		referredPhone: "+234 (0)818 234 5678",
-		dateReferred: "2025-10-12",
-		dateJoined: null,
-		status: "pending",
-		rewardStatus: "pending",
-		rewardAmount: 0,
-		tierLevel: 2,
-		totalSpent: 0,
-		lifetimeValue: 0,
-	},
-	{
-		id: "5",
-		referrerId: "c1",
-		referrerName: "Chidinma Okonkwo",
-		referredId: "c5",
-		referredName: "Ngozi Adekunle",
-		referredEmail: "ngozi.adekunle@email.com",
-		referredPhone: "+234 (0)809 345 6789",
-		dateReferred: "2025-10-18",
-		dateJoined: "2025-10-18",
-		status: "active",
-		rewardStatus: "processing",
-		rewardAmount: 250,
-		tierLevel: 2,
-		totalSpent: 15000,
-		lifetimeValue: 15000,
-	},
-	{
-		id: "6",
-		referrerId: "r1",
-		referrerName: "Adaeze Nnamdi",
-		referredId: "c6",
-		referredName: "Kunle Bamidele",
-		referredEmail: "kunle.bamidele@email.com",
-		referredPhone: "+234 (0)807 567 8901",
-		dateReferred: "2025-08-20",
-		dateJoined: "2025-08-21",
-		status: "active",
-		rewardStatus: "paid",
-		rewardAmount: 1000,
-		tierLevel: 1,
-		totalSpent: 89000,
-		lifetimeValue: 89000,
-	},
-	{
-		id: "7",
-		referrerId: "r1",
-		referrerName: "Adaeze Nnamdi",
-		referredId: "c7",
-		referredName: "Yetunde Oluwaseun",
-		referredEmail: "yetunde.oluwaseun@email.com",
-		referredPhone: "+234 (0)810 678 9012",
-		dateReferred: "2025-09-05",
-		dateJoined: null,
-		status: "pending",
-		rewardStatus: "pending",
-		rewardAmount: 0,
-		tierLevel: 1,
-		totalSpent: 0,
-		lifetimeValue: 0,
-	},
-];
-
-const mockClientStats: ClientReferralStats[] = [
-	{
-		clientId: "r1",
-		clientName: "Adaeze Nnamdi",
-		totalReferrals: 5,
-		successfulReferrals: 4,
-		pendingReferrals: 1,
-		totalRewardsEarned: 2000,
-		pendingRewards: 250,
-		lifetimeValueGenerated: 178000,
-		joinDate: "2025-06-01",
-		referralTier: "platinum",
-		conversionRate: 80,
-	},
-	{
-		clientId: "c1",
-		clientName: "Chidinma Okonkwo",
-		totalReferrals: 2,
-		successfulReferrals: 2,
-		pendingReferrals: 0,
-		totalRewardsEarned: 500,
-		pendingRewards: 250,
-		lifetimeValueGenerated: 43000,
-		joinDate: "2025-09-16",
-		referralTier: "gold",
-		conversionRate: 100,
-	},
-	{
-		clientId: "c2",
-		clientName: "Emeka Adeleke",
-		totalReferrals: 1,
-		successfulReferrals: 0,
-		pendingReferrals: 1,
-		totalRewardsEarned: 0,
-		pendingRewards: 0,
-		lifetimeValueGenerated: 0,
-		joinDate: "2025-10-02",
-		referralTier: "bronze",
-		conversionRate: 0,
-	},
-];
-
 export function ReferralProgram() {
 	const [activities, setActivities] = useState<ReferralActivity[]>([]);
 	const [clientStats, setClientStats] = useState<ClientReferralStats[]>([]);
@@ -265,8 +101,8 @@ export function ReferralProgram() {
 			try {
 				const backendUrl =
 					import.meta.env.VITE_WHATSAPP_BACKEND_URL ||
-					"https://mysound-whatsapp-backend.onrender.com";
-				const response = await fetch(`${backendUrl}/api/referrals/stats`);
+					"https://mysound-whatsapp-backend.onrender.com/api";
+				const response = await fetch(`${backendUrl}/referrals/stats`);
 				const data = await response.json();
 
 				if (data.success) {
@@ -317,8 +153,6 @@ export function ReferralProgram() {
 					title: "Error",
 					description: "Failed to load referral data",
 				});
-				setActivities(mockActivities);
-				setClientStats(mockClientStats);
 			} finally {
 				setLoading(false);
 			}
@@ -334,9 +168,9 @@ export function ReferralProgram() {
 
 			const backendUrl =
 				import.meta.env.VITE_WHATSAPP_BACKEND_URL ||
-				"https://mysound-whatsapp-backend.onrender.com";
+				"https://mysound-whatsapp-backend.onrender.com/api";
 
-			const response = await fetch(`${backendUrl}/api/referrals/process`, {
+			const response = await fetch(`${backendUrl}/referrals/process`, {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
