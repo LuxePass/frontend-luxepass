@@ -1,4 +1,5 @@
 import { useState } from "react";
+import api from "../services/api";
 import {
 	Dialog,
 	DialogContent,
@@ -56,7 +57,6 @@ export function AIAssistantModal({
 		if (!input.trim()) return;
 
 		const userMessage: Message = {
-			// eslint-disable-next-line react-hooks/purity
 			id: Date.now().toString(),
 			role: "user",
 			content: input,
@@ -66,50 +66,43 @@ export function AIAssistantModal({
 			}),
 		};
 
-		setMessages([...messages, userMessage]);
+		setMessages((prev) => [...prev, userMessage]);
+		const currentInput = input;
 		setInput("");
 		setIsLoading(true);
 
-		// Simulate AI response
-		setTimeout(() => {
-			const aiMessage: Message = {
+		try {
+			const { data } = await api.post("/ai/chat", { message: currentInput });
+
+			if (data.success) {
+				const aiMessage: Message = {
+					id: (Date.now() + 1).toString(),
+					role: "assistant",
+					content: String(data.data.reply),
+					timestamp: new Date().toLocaleTimeString("en-US", {
+						hour: "2-digit",
+						minute: "2-digit",
+					}),
+				};
+				setMessages((prev) => [...prev, aiMessage]);
+			} else {
+				throw new Error(data.message || "Failed to get AI response");
+			}
+		} catch {
+			const errorMessage: Message = {
 				id: (Date.now() + 1).toString(),
 				role: "assistant",
-				content: getAIResponse(input),
+				content:
+					"Sorry, I encountered an error. Please check your connection and try again.",
 				timestamp: new Date().toLocaleTimeString("en-US", {
 					hour: "2-digit",
 					minute: "2-digit",
 				}),
 			};
-			setMessages((prev) => [...prev, aiMessage]);
+			setMessages((prev) => [...prev, errorMessage]);
+		} finally {
 			setIsLoading(false);
-		}, 1000);
-	};
-
-	const getAIResponse = (userInput: string): string => {
-		const lowerInput = userInput.toLowerCase();
-
-		if (lowerInput.includes("draft") || lowerInput.includes("response")) {
-			return "I'd be happy to help draft a response. Here's a professional template:\n\n\"Dear [Client Name],\n\nThank you for reaching out. I appreciate your inquiry regarding [subject]. I'd be delighted to assist you with this request.\n\n[Specific response to their needs]\n\nPlease let me know if you need any additional information or have other preferences I should consider.\n\nBest regards,\n[Your Name]\"\n\nWould you like me to customize this further?";
 		}
-
-		if (lowerInput.includes("summarize") || lowerInput.includes("summary")) {
-			return "Based on recent client interactions, here's a summary:\n\n• Sarah Chen - Requested dinner reservation at French restaurant (Party of 4, Friday 7 PM)\n• Marcus Johnson - Property viewing schedule adjustments needed\n• Elena Rodriguez - Private jet booking confirmed for Aspen tomorrow at 2 PM\n\nAll high-priority requests are being handled. Would you like more details on any specific client?";
-		}
-
-		if (lowerInput.includes("dining") || lowerInput.includes("restaurant")) {
-			return "Here are some luxury dining recommendations:\n\n1. Le Bernardin - French fine dining, Michelin 3-star\n2. Eleven Madison Park - Contemporary American, exceptional service\n3. Per Se - Thomas Keller's NYC flagship, tasting menu\n4. Daniel - Classic French cuisine, elegant atmosphere\n\nWould you like me to help with reservation details or provide more options?";
-		}
-
-		if (lowerInput.includes("travel") || lowerInput.includes("itinerary")) {
-			return "I can help create a luxury travel itinerary. Could you provide:\n\n• Destination and dates\n• Number of travelers\n• Preferred activities (dining, shopping, cultural experiences, relaxation)\n• Budget range\n• Any special requirements or preferences\n\nOnce I have these details, I'll craft a personalized itinerary with exclusive recommendations.";
-		}
-
-		return (
-			"I understand you're asking about \"" +
-			userInput +
-			'". I can assist with:\n\n• Drafting professional client responses\n• Summarizing conversation threads\n• Providing luxury service recommendations\n• Creating travel itineraries\n• Brainstorming creative solutions\n\nCould you provide more specific details so I can better assist you?'
-		);
 	};
 
 	const handleQuickPrompt = (prompt: string) => {
@@ -162,35 +155,33 @@ export function AIAssistantModal({
 								key={message.id}
 								className={cn(
 									"flex gap-2 sm:gap-3",
-									message.role === "user" && "flex-row-reverse"
+									message.role === "user" && "flex-row-reverse",
 								)}>
 								<Avatar className="size-8 shrink-0">
 									<AvatarFallback
 										className={cn(
-											message.role === "assistant"
-												? "bg-gradient-to-br from-violet-600 to-purple-600"
-												: "bg-gradient-to-br from-zinc-700 to-zinc-600",
-											"text-xs"
+											message.role === "assistant" ?
+												"bg-gradient-to-br from-violet-600 to-purple-600"
+											:	"bg-gradient-to-br from-zinc-700 to-zinc-600",
+											"text-xs",
 										)}>
-										{message.role === "assistant" ? (
+										{message.role === "assistant" ?
 											<Sparkles className="size-4" />
-										) : (
-											"You"
-										)}
+										:	"You"}
 									</AvatarFallback>
 								</Avatar>
 
 								<div
 									className={cn(
 										"flex flex-col max-w-[85%] sm:max-w-[80%]",
-										message.role === "user" && "items-end"
+										message.role === "user" && "items-end",
 									)}>
 									<div
 										className={cn(
 											"inline-block rounded-lg p-3 sm:p-3 border",
-											message.role === "assistant"
-												? "bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700"
-												: "bg-violet-100 dark:bg-violet-900/50 border-violet-300 dark:border-violet-800"
+											message.role === "assistant" ?
+												"bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700"
+											:	"bg-violet-100 dark:bg-violet-900/50 border-violet-300 dark:border-violet-800",
 										)}>
 										<p className="text-sm whitespace-pre-wrap leading-relaxed">
 											{message.content}
