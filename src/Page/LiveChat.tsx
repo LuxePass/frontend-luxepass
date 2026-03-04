@@ -311,7 +311,7 @@ export function LiveChat() {
 					error?: string;
 				};
 
-				console.log("📦 [LiveChat] Fetch Payload:", payload);
+				// console.log("📦 [LiveChat] Fetch Payload:", payload);
 
 				// Handle different response formats
 				let rawItems: ConversationApiItem[] = [];
@@ -815,7 +815,7 @@ export function LiveChat() {
 				void fetchMessages(selectedConversation, true);
 			}, 1000);
 		} catch (err) {
-			console.error("Error sending message:", err);
+			// console.error("Error sending message:", err);
 			const errorMessage =
 				err instanceof Error ? err.message : "Failed to send message";
 			customToast.error({
@@ -857,7 +857,7 @@ export function LiveChat() {
 
 			customToast.success("User assigned to you successfully");
 		} catch (err) {
-			console.error("Assignment failed", err);
+			// console.error("Assignment failed", err);
 			customToast.error("Failed to assign user");
 		}
 	};
@@ -883,7 +883,7 @@ export function LiveChat() {
 
 			customToast.success("Marked as resolved (Unassigned)");
 		} catch (err) {
-			console.error("Resolution failed", err);
+			// console.error("Resolution failed", err);
 			customToast.error("Failed to mark as resolved");
 		}
 	};
@@ -930,7 +930,7 @@ export function LiveChat() {
 				description: `Live chat with ${conv.clientName} has been ended. User can now access the menu.`,
 			});
 		} catch (error) {
-			console.error("Error ending live chat:", error);
+			// console.error("Error ending live chat:", error);
 			customToast.error({
 				title: "Error",
 				description:

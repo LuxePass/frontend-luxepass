@@ -97,8 +97,7 @@ export function useReferrals() {
 				setActivities(newActivities);
 				setClientStats(newClientStats);
 			}
-		} catch (error) {
-			console.error("Failed to fetch referral stats:", error);
+		} catch (_error) {
 			customToast.error({
 				title: "Error",
 				description: "Failed to load referral data",

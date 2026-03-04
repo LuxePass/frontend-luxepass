@@ -28,6 +28,7 @@ import DashboardLayout from "./layouts/DashboardLayout";
 import { DashboardHome } from "./Page/DashboardHome";
 import { Clients } from "./Page/Clients";
 import { Tools } from "./Page/Tools";
+import FloatingAI from "./components/ui/FloatingAI";
 
 // Guards
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -246,6 +247,7 @@ function App() {
 						/>
 					</Routes>
 				</BrowserRouter>
+				<FloatingAI />
 			</AuthProvider>
 		</ThemeProvider>
 	);

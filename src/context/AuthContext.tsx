@@ -19,8 +19,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 	const logout = useCallback(async () => {
 		try {
 			await api.post("/auth/pa/logout");
-		} catch (error) {
-			console.error("Logout API call failed", error);
+		} catch (_error) {
+			// console.error("Logout API call failed", error);
 		} finally {
 			setAccessToken(null);
 			setUser(null);
@@ -41,8 +41,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 					if (storedUser) {
 						setUser(JSON.parse(storedUser));
 					}
-				} catch (error) {
-					console.error("Failed to initialize auth", error);
+				} catch (_error) {
+					// console.error("Failed to initialize auth", error);
 					logout();
 				}
 			}
@@ -80,9 +80,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 					`Bearer ${tokens.accessToken}`;
 
 				return { requiresTwoFactor: false };
-			} catch (error) {
-				console.error("Login failed", error);
-				throw error;
 			} finally {
 				setLoading(false);
 			}
@@ -108,9 +105,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
 			api.defaults.headers.common["Authorization"] =
 				`Bearer ${tokens.accessToken}`;
-		} catch (error) {
-			console.error("2FA verification failed", error);
-			throw error;
 		} finally {
 			setLoading(false);
 		}
@@ -118,15 +112,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
 	const changePassword = useCallback(
 		async (currentPassword: string, newPassword: string) => {
-			try {
-				await api.post("/auth/pa/change-password", {
-					currentPassword,
-					newPassword,
-				});
-			} catch (error) {
-				console.error("Password change failed", error);
-				throw error;
-			}
+			await api.post("/auth/pa/change-password", {
+				currentPassword,
+				newPassword,
+			});
 		},
 		[],
 	);

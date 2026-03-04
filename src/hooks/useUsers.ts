@@ -41,21 +41,13 @@ export function useUsers() {
 					};
 				};
 				if (err?.response?.status === 403) {
-					console.error("❌ 403 FORBIDDEN: Cannot access /users/assigned");
-					console.error("Error details:", err?.response?.data);
-					console.error(
-						"Current user from localStorage:",
-						localStorage.getItem("user")
-					);
-					console.error(
-						"Required: PA role must be one of: PA, SENIOR_PA, ADMIN, or SUPER_ADMIN"
-					);
+					// console.error("❌ 403 FORBIDDEN: Cannot access /users/assigned");
 					return { data: [], meta: null };
 				}
 				throw error;
 			}
 		},
-		[request]
+		[request],
 	);
 
 	const getUserById = useCallback(async (id: string) => {
@@ -78,7 +70,7 @@ export function useUsers() {
 			const response = await api.put(`/pas/${id}`, paData);
 			return response.data?.data;
 		},
-		[]
+		[],
 	);
 
 	const deletePA = useCallback(async (id: string) => {

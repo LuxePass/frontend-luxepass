@@ -131,8 +131,7 @@ export function AdminProfile({
 			} else {
 				customToast.error("Could not find user ID to update");
 			}
-		} catch (error) {
-			console.error("Failed to update profile", error);
+		} catch (_error) {
 			customToast.error("Failed to update profile. Please try again.");
 		}
 	};
@@ -166,7 +165,7 @@ export function AdminProfile({
 			if (changePassword) {
 				await changePassword(
 					passwordForm.currentPassword,
-					passwordForm.newPassword
+					passwordForm.newPassword,
 				);
 				customToast.success({
 					title: "Password Changed",
@@ -181,10 +180,9 @@ export function AdminProfile({
 			} else {
 				throw new Error("Password change function not available");
 			}
-		} catch (error) {
-			console.error("Failed to change password", error);
+		} catch (_error) {
 			customToast.error(
-				"Failed to change password. Please check your current password."
+				"Failed to change password. Please check your current password.",
 			);
 		}
 	};
@@ -365,9 +363,9 @@ export function AdminProfile({
 									Member Since
 								</span>
 								<span className="font-medium">
-									{profile.createdAt
-										? new Date(profile.createdAt).toLocaleDateString()
-										: "N/A"}
+									{profile.createdAt ?
+										new Date(profile.createdAt).toLocaleDateString()
+									:	"N/A"}
 								</span>
 							</div>
 						</div>
@@ -395,9 +393,9 @@ export function AdminProfile({
 								size="sm"
 								onClick={() => setTheme("light")}
 								className={
-									theme === "light"
-										? "bg-violet-600 hover:bg-violet-700"
-										: "border-zinc-300 dark:border-zinc-700"
+									theme === "light" ?
+										"bg-violet-600 hover:bg-violet-700"
+									:	"border-zinc-300 dark:border-zinc-700"
 								}>
 								<Sun className="size-4" />
 							</Button>
@@ -406,9 +404,9 @@ export function AdminProfile({
 								size="sm"
 								onClick={() => setTheme("dark")}
 								className={
-									theme === "dark"
-										? "bg-violet-600 hover:bg-violet-700"
-										: "border-zinc-300 dark:border-zinc-700"
+									theme === "dark" ?
+										"bg-violet-600 hover:bg-violet-700"
+									:	"border-zinc-300 dark:border-zinc-700"
 								}>
 								<Moon className="size-4" />
 							</Button>
@@ -593,7 +591,7 @@ export function AdminProfile({
 
 	return (
 		<>
-			{variant === "modal" ? (
+			{variant === "modal" ?
 				<Dialog
 					open={settingsOpen}
 					onOpenChange={setSettingsOpen}>
@@ -635,14 +633,13 @@ export function AdminProfile({
 						</ScrollArea>
 					</DialogContent>
 				</Dialog>
-			) : (
-				<>
+			:	<>
 					{/* Page View: directly render content */}
 					{/* We need to ensure logic like dialogs (password, logout etc) are still rendered */}
 					{/* The page view will omit the main Dialog trigger and wrapper */}
 					{mainContent}
 				</>
-			)}
+			}
 
 			{/* Logout Confirmation Dialog */}
 			<AlertDialog
@@ -823,11 +820,9 @@ export function AdminProfileMobile() {
 				size="sm"
 				onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
 				className="shrink-0">
-				{theme === "dark" ? (
+				{theme === "dark" ?
 					<Sun className="size-4" />
-				) : (
-					<Moon className="size-4" />
-				)}
+				:	<Moon className="size-4" />}
 			</Button>
 		</div>
 	);

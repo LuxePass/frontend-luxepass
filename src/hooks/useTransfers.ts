@@ -28,16 +28,15 @@ export function useTransfers() {
 		async (params?: Record<string, unknown>) => {
 			try {
 				return await request(api.get("/transfers", { params }));
-			} catch (error: unknown) {
-				const err = error as { response?: { status?: number } };
+			} catch (_error: unknown) {
+				const err = _error as { response?: { status?: number } };
 				if (err?.response?.status === 403) {
-					console.warn("Permission denied: Cannot access transfers");
 					return { data: [], meta: null };
 				}
-				throw error;
+				throw _error;
 			}
 		},
-		[request]
+		[request],
 	);
 
 	return {

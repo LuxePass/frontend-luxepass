@@ -70,7 +70,7 @@ export function ClientDetails({ clientId, onClose }: ClientDetailsProps) {
 				setWhatsappAccounts(result.data || []);
 			}
 		} catch (error) {
-			console.error("Failed to fetch WhatsApp accounts", error);
+			// console.error("Failed to fetch WhatsApp accounts", error);
 		}
 	};
 
@@ -102,7 +102,7 @@ export function ClientDetails({ clientId, onClose }: ClientDetailsProps) {
 			setWithdrawNarration("");
 			setSelectedAccountId("");
 		} catch (error) {
-			console.error("Withdrawal failed", error);
+			// console.error("Withdrawal failed", error);
 			toast.error("Failed to process withdrawal");
 		} finally {
 			setWithdrawLoading(false);
@@ -123,7 +123,7 @@ export function ClientDetails({ clientId, onClose }: ClientDetailsProps) {
 					setClientBookings(bookingsData.data || []);
 				}
 			} catch (err) {
-				console.error("Failed to fetch client details", err);
+				// console.error("Failed to fetch client details", err);
 			}
 		};
 

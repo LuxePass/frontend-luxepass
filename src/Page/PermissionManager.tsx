@@ -113,7 +113,7 @@ export function PermissionManager() {
 				const response = await getAllPAs();
 				setPas(response || []);
 			} catch (err: unknown) {
-				console.error("Failed to fetch PAs:", err);
+				// console.error("Failed to fetch PAs:", err);
 				customToast.error("Failed to fetch PAs");
 			}
 		};
@@ -127,7 +127,7 @@ export function PermissionManager() {
 			const perms = await getPAPermissions(paId);
 			setPermissions(perms || []);
 		} catch (err: unknown) {
-			console.error("Failed to fetch permissions:", err);
+			// console.error("Failed to fetch permissions:", err);
 			customToast.error("Failed to fetch permissions");
 			setPermissions([]);
 		} finally {
@@ -147,7 +147,7 @@ export function PermissionManager() {
 			const response = await getAllPAs();
 			setPas(response || []);
 		} catch (err: unknown) {
-			console.error("Failed to create PA:", err);
+			// console.error("Failed to create PA:", err);
 			customToast.error("Failed to create PA");
 		} finally {
 			setCreating(false);
@@ -166,7 +166,7 @@ export function PermissionManager() {
 			const response = await getAllPAs();
 			setPas(response || []);
 		} catch (err: unknown) {
-			console.error("Failed to update PA:", err);
+			// console.error("Failed to update PA:", err);
 			customToast.error("Failed to update PA");
 		} finally {
 			setUpdating(false);
@@ -185,7 +185,7 @@ export function PermissionManager() {
 			const response = await getAllPAs();
 			setPas(response || []);
 		} catch (err: unknown) {
-			console.error("Failed to delete PA:", err);
+			// console.error("Failed to delete PA:", err);
 			customToast.error("Failed to delete PA");
 		} finally {
 			setDeleting(false);
@@ -211,7 +211,7 @@ export function PermissionManager() {
 	const handleUpdatePermission = (
 		index: number,
 		field: string,
-		value: string
+		value: string,
 	) => {
 		const newPerms = [...permissions];
 		(newPerms[index] as unknown as Record<string, unknown>)[field] = value;
@@ -225,7 +225,7 @@ export function PermissionManager() {
 			await updatePAPermissions(selectedPaId, permissions);
 			customToast.success("Permissions updated successfully");
 		} catch (err: unknown) {
-			console.error("Failed to update permissions:", err);
+			// console.error("Failed to update permissions:", err);
 			customToast.error("Failed to update permissions");
 		} finally {
 			setLoading(false);
@@ -478,12 +478,11 @@ export function PermissionManager() {
 					</div>
 
 					<div className="flex-1 overflow-auto p-4 space-y-3">
-						{permissions.length === 0 ? (
+						{permissions.length === 0 ?
 							<div className="h-32 flex items-center justify-center text-zinc-500 italic font-sans text-sm">
 								No permissions defined for this PA
 							</div>
-						) : (
-							permissions.map((perm, index) => (
+						:	permissions.map((perm, index) => (
 								<div
 									key={index}
 									className="flex flex-col gap-3 p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/50">
@@ -499,18 +498,17 @@ export function PermissionManager() {
 													</span>
 												)}
 											</div>
-											{perm.source === "role" ? (
+											{perm.source === "role" ?
 												<Input
 													value={perm.key}
 													disabled
 													className="font-mono text-sm h-9 bg-zinc-100 dark:bg-zinc-800 text-zinc-500"
 												/>
-											) : (
-												<Select
+											:	<Select
 													value={perm.key}
 													onValueChange={(val) => {
 														const selected = PREDEFINED_PERMISSIONS.find(
-															(p) => p.key === val
+															(p) => p.key === val,
 														);
 														const newPerms = [...permissions];
 														newPerms[index] = {
@@ -539,7 +537,7 @@ export function PermissionManager() {
 														))}
 													</SelectContent>
 												</Select>
-											)}
+											}
 										</div>
 										<Button
 											variant="ghost"
@@ -555,7 +553,7 @@ export function PermissionManager() {
 									)}
 								</div>
 							))
-						)}
+						}
 					</div>
 				</Card>
 			)}
