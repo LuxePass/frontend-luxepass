@@ -6,6 +6,7 @@ import { useBookings } from "../hooks/useBookings";
 import { useChat } from "../hooks/useChat";
 import { useTransfers } from "../hooks/useTransfers";
 import { useListings } from "../hooks/useListings";
+import { useReferrals } from "../hooks/useReferrals";
 import {
 	ListTodo,
 	MessageCircle,
@@ -22,7 +23,7 @@ interface QuickViewsProps {
 	onChatClick: () => void;
 	onTransferClick: () => void;
 	onListingsClick: () => void;
-	onReferralsClick: () => void;
+	onNavigateToReferrals: () => void;
 }
 
 export function QuickViews({
@@ -30,33 +31,45 @@ export function QuickViews({
 	onChatClick,
 	onTransferClick,
 	onListingsClick,
-	onReferralsClick,
+	onNavigateToReferrals,
 }: QuickViewsProps) {
 	const { bookings, getBookings, loading: loadingBookings } = useBookings();
 	const { conversations, fetchConversations, loading: loadingChat } = useChat();
 	const { transfers, getTransfers, loading: loadingTransfers } = useTransfers();
 	const { listings, getListings, loading: loadingListings } = useListings();
+	const {
+		activities,
+		fetchReferralData,
+		loading: loadingReferrals,
+	} = useReferrals();
 
 	useEffect(() => {
 		getBookings();
 		fetchConversations();
 		getTransfers();
 		getListings();
-	}, [getBookings, fetchConversations, getTransfers, getListings]);
+		fetchReferralData();
+	}, [
+		getBookings,
+		fetchConversations,
+		getTransfers,
+		getListings,
+		fetchReferralData,
+	]);
 
 	const pendingInquiries = useMemo(
 		() => bookings.filter((b) => b.status === "INQUIRY"),
-		[bookings]
+		[bookings],
 	);
 
 	const pendingTransfers = useMemo(
 		() => transfers.filter((t) => t.status === "PENDING"),
-		[transfers]
+		[transfers],
 	);
 
 	const activeListings = useMemo(
 		() => listings.filter((l) => l.isActive),
-		[listings]
+		[listings],
 	);
 
 	const quickViewItems = useMemo(
@@ -70,9 +83,10 @@ export function QuickViews({
 				borderColor: "border-violet-200 dark:border-violet-900",
 				onClick: onTasksClick,
 				badge: { text: pendingInquiries.length.toString(), color: "bg-violet-600" },
+				loading: loadingBookings,
 				items: pendingInquiries.slice(0, 3).map((task) => ({
 					text: `${task.type} booking - ${task.currency} ${parseFloat(
-						task.totalAmount
+						task.totalAmount,
 					).toLocaleString()}`,
 					time: new Date(task.createdAt).toLocaleDateString(),
 					urgent: true,
@@ -87,6 +101,7 @@ export function QuickViews({
 				borderColor: "border-green-200 dark:border-green-900",
 				onClick: onChatClick,
 				badge: { text: conversations.length.toString(), color: "bg-green-600" },
+				loading: loadingChat,
 				items: conversations.slice(0, 3).map((conv) => ({
 					text: `${conv.clientName}: ${conv.lastMessage}`,
 					time: conv.lastMessageTime || "Just now",
@@ -102,9 +117,10 @@ export function QuickViews({
 				borderColor: "border-orange-200 dark:border-orange-900",
 				onClick: onTransferClick,
 				badge: { text: pendingTransfers.length.toString(), color: "bg-orange-600" },
+				loading: loadingTransfers,
 				items: pendingTransfers.slice(0, 3).map((transfer) => ({
 					text: `Transfer - ${transfer.currency} ${parseFloat(
-						transfer.amount
+						transfer.amount,
 					).toLocaleString()}`,
 					time: "Pending",
 					urgent: true,
@@ -119,6 +135,7 @@ export function QuickViews({
 				borderColor: "border-blue-200 dark:border-blue-900",
 				onClick: onListingsClick,
 				badge: { text: activeListings.length.toString(), color: "bg-blue-600" },
+				loading: loadingListings,
 				items: activeListings.slice(0, 3).map((listing) => ({
 					text: `${listing.name} - ${listing.city}`,
 					time: listing.isActive ? "Active" : "Inactive",
@@ -127,18 +144,19 @@ export function QuickViews({
 			},
 			{
 				title: "Referral Program",
-				description: "8 new referrals this week",
+				description: `${activities.length} total referrals`,
 				icon: Users,
 				iconColor: "text-indigo-600 dark:text-indigo-400",
 				bgColor: "bg-indigo-100 dark:bg-indigo-950/50",
 				borderColor: "border-indigo-200 dark:border-indigo-900",
-				onClick: onReferralsClick,
-				badge: { text: "8", color: "bg-indigo-600" },
-				items: [
-					{ text: "Lisa → Sarah - ₦500,000 earned", time: "Today", urgent: false },
-					{ text: "Marcus → David - Pending", time: "Yesterday", urgent: false },
-					{ text: "Elena → 2 referrals", time: "This week", urgent: false },
-				],
+				onClick: onNavigateToReferrals,
+				badge: { text: activities.length.toString(), color: "bg-indigo-600" },
+				items: activities.slice(0, 3).map((ref) => ({
+					text: `${ref.referrerName} → ${ref.referredName} - ${ref.rewardAmount > 0 ? `₦${ref.rewardAmount.toLocaleString()} earned` : "Pending"}`,
+					time: ref.dateReferred,
+					urgent: ref.rewardStatus === "pending",
+				})),
+				loading: loadingReferrals,
 			},
 		],
 		[
@@ -146,12 +164,18 @@ export function QuickViews({
 			conversations,
 			pendingTransfers,
 			activeListings,
+			activities,
 			onTasksClick,
 			onChatClick,
 			onTransferClick,
 			onListingsClick,
-			onReferralsClick,
-		]
+			onNavigateToReferrals,
+			loadingBookings,
+			loadingChat,
+			loadingTransfers,
+			loadingListings,
+			loadingReferrals,
+		],
 	);
 
 	return (
@@ -171,7 +195,12 @@ export function QuickViews({
 							<Card
 								key={item.title}
 								onClick={item.onClick}
-								className={`p-4 cursor-pointer transition-all hover:shadow-md active:scale-98 bg-white dark:bg-zinc-900/50 border-2 ${item.borderColor}`}>
+								className={`p-4 cursor-pointer transition-all hover:shadow-md active:scale-98 bg-white dark:bg-zinc-900/50 border-2 ${item.borderColor} relative overflow-hidden`}>
+								{item.loading && (
+									<div className="absolute inset-0 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-[1px] flex items-center justify-center z-10">
+										<div className="size-5 border-2 border-violet-600 border-t-transparent rounded-full animate-spin" />
+									</div>
+								)}
 								<div className="flex items-start justify-between mb-3">
 									<div className="flex items-center gap-3">
 										<div className={`p-2.5 rounded-lg ${item.bgColor}`}>

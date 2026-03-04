@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { cn } from "../utils";
 import { customToast } from "./CustomToast";
 
@@ -84,6 +82,19 @@ interface ClientReferralStats {
 	conversionRate: number;
 }
 
+interface ReferralApiItem {
+	_id: string;
+	referredBy: string;
+	referrerName?: string;
+	name?: string;
+	email?: string;
+	phoneNumber: string;
+	createdAt: string;
+	rewardsEarned: number;
+	referralCode: string;
+	count: number;
+}
+
 export function ReferralProgram() {
 	const [activities, setActivities] = useState<ReferralActivity[]>([]);
 	const [clientStats, setClientStats] = useState<ClientReferralStats[]>([]);
@@ -108,7 +119,7 @@ export function ReferralProgram() {
 				if (data.success) {
 					// Transform Activities
 					const newActivities: ReferralActivity[] = data.data.activities.map(
-						(item: Record<string, any>, index: number) => ({
+						(item: ReferralApiItem, index: number) => ({
 							id: item._id || `ref-${index}`,
 							referrerId: item.referredBy,
 							referrerName: item.referrerName || item.referredBy || "Unknown",
@@ -129,7 +140,7 @@ export function ReferralProgram() {
 
 					// Transform Client Stats (Top Referrers)
 					const newClientStats: ClientReferralStats[] = data.data.topReferrers.map(
-						(item: Record<string, any>) => ({
+						(item: ReferralApiItem) => ({
 							clientId: item.referralCode,
 							clientName: item.name || "Unknown",
 							referralCode: item.referralCode,
@@ -195,10 +206,11 @@ export function ReferralProgram() {
 			} else {
 				throw new Error(data.message);
 			}
-		} catch (error: any) {
+		} catch (error: unknown) {
+			const err = error as Error;
 			customToast.error({
 				title: "Error",
-				description: error.message || "Failed to process reward",
+				description: err.message || "Failed to process reward",
 			});
 		}
 	};
@@ -324,6 +336,19 @@ export function ReferralProgram() {
 			description: "Referral data is being exported...",
 		});
 	};
+
+	if (loading) {
+		return (
+			<div className="h-full flex items-center justify-center bg-zinc-50 dark:bg-zinc-950">
+				<div className="flex flex-col items-center gap-4">
+					<div className="size-10 border-4 border-violet-600 border-t-transparent rounded-full animate-spin" />
+					<p className="text-zinc-500 dark:text-zinc-400 animate-pulse">
+						Loading referral data...
+					</p>
+				</div>
+			</div>
+		);
+	}
 
 	return (
 		<div className="h-full">

@@ -19,8 +19,8 @@ import {
 	Activity,
 	User,
 	LayoutDashboard,
-	Wallet,
 	Calendar,
+	Tag,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { cn } from "../utils";

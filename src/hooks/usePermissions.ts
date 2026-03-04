@@ -1,12 +1,11 @@
 import { useCallback } from "react";
 import api from "../services/api";
-import { useApi } from "./useApi";
 
 export interface PAPermission {
 	key: string;
 	granted: boolean;
 	source: "role" | "explicit";
-	constraints?: any;
+	constraints?: Record<string, unknown>;
 	expiresAt?: string | null;
 	description?: string;
 }
@@ -37,7 +36,7 @@ export function usePermissions() {
 			});
 			return response.data?.data;
 		},
-		[]
+		[],
 	);
 
 	return {

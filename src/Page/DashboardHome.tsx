@@ -18,7 +18,7 @@ export function DashboardHome() {
 							onChatClick={() => navigate("/livechat")}
 							onTransferClick={() => navigate("/transfer")}
 							onListingsClick={() => navigate("/listings")}
-							onReferralsClick={() => navigate("/referrals")}
+							onNavigateToReferrals={() => navigate("/referrals")}
 						/>
 					</div>
 				</div>

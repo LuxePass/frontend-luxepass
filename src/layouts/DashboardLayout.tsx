@@ -18,7 +18,7 @@ import { Toaster } from "../components/ui/sonner";
 import { AIAssistantModal } from "../Page/AIAssistantModal";
 
 export default function DashboardLayout() {
-	const { user, logout } = useAuth();
+	const { logout } = useAuth();
 	const navigate = useNavigate();
 	const location = useLocation();
 
