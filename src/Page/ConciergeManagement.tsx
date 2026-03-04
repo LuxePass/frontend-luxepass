@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { customToast } from "./CustomToast";
-import { useState, useEffect, useMemo } from "react";
+import api from "../services/api";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -80,38 +81,30 @@ export function ConciergeManagement() {
 		isActive: true,
 	});
 
-	const backendUrl = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
-
-	const fetchItems = async () => {
+	const fetchItems = useCallback(async () => {
 		setLoading(true);
 		try {
-			const response = await fetch(`${backendUrl}/concierge`);
-			const data = await response.json();
-			if (data.success) {
-				setItems(data.data.data);
+			const response = await api.get("/concierge");
+			if (response.data.success) {
+				setItems(response.data.data.data);
 			}
 		} catch (err) {
 			customToast.error("Failed to fetch concierge items");
 		} finally {
 			setLoading(false);
 		}
-	};
+	}, []);
 
 	useEffect(() => {
 		fetchItems();
-	}, []);
+	}, [fetchItems]);
 
 	const handleCreateItem = async (e: React.FormEvent) => {
 		e.preventDefault();
 		setSubmitting(true);
 		try {
-			const response = await fetch(`${backendUrl}/concierge`, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify(newItem),
-			});
-			const data = await response.json();
-			if (data.success) {
+			const response = await api.post("/concierge", newItem);
+			if (response.data.success) {
 				customToast.success("Item created successfully");
 				setCreateDialogOpen(false);
 				setNewItem({
@@ -134,11 +127,8 @@ export function ConciergeManagement() {
 	const handleDeleteItem = async (id: string) => {
 		if (!window.confirm("Are you sure you want to delete this item?")) return;
 		try {
-			const response = await fetch(`${backendUrl}/concierge/${id}`, {
-				method: "DELETE",
-			});
-			const data = await response.json();
-			if (data.success) {
+			const response = await api.delete(`/concierge/${id}`);
+			if (response.data.success) {
 				customToast.success("Item deleted successfully");
 				fetchItems();
 			}

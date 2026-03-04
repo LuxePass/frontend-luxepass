@@ -194,7 +194,11 @@ function App() {
 							/>
 							<Route
 								path="concierge"
-								element={<ConciergeManagement />}
+								element={
+									<AdminGuard>
+										<ConciergeManagement />
+									</AdminGuard>
+								}
 							/>
 							<Route
 								path="audit-logs"

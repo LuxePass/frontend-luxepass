@@ -73,6 +73,9 @@ export default function DashboardLayout() {
 			case "referrals":
 				navigate("/referrals");
 				break;
+			case "concierge":
+				navigate("/concierge");
+				break;
 			case "audit-logs":
 				navigate("/audit-logs");
 				break;
