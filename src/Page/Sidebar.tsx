@@ -30,6 +30,7 @@ const toolItems = [
 	{ id: "livechat", label: "Live Chat", icon: MessageCircle },
 	{ id: "transfer", label: "Transfer", icon: ShieldAlert },
 	{ id: "listings", label: "Listings", icon: Building2 },
+	{ id: "concierge", label: "Concierge", icon: Tag },
 ];
 
 interface SidebarProps {
@@ -100,9 +101,10 @@ export function Sidebar({
 		if (user?.role === "SUPER_ADMIN" || user?.role === "ADMIN") {
 			navigationItems.push(
 				{ id: "bookings", label: "Bookings", icon: Calendar },
+				{ id: "concierge", label: "Concierge", icon: Tag },
 				{ id: "audit-logs", label: "Audit Logs", icon: Activity },
 				{ id: "permissions", label: "PA Permissions", icon: ShieldCheck },
-				{ id: "pa-management", label: "PA Management", icon: Users }
+				{ id: "pa-management", label: "PA Management", icon: Users },
 			);
 		}
 
@@ -145,9 +147,9 @@ export function Sidebar({
 										}}
 										className={cn(
 											"w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors",
-											isActive
-												? "bg-violet-100 dark:bg-violet-950/50 text-violet-600 dark:text-violet-400"
-												: "hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300"
+											isActive ?
+												"bg-violet-100 dark:bg-violet-950/50 text-violet-600 dark:text-violet-400"
+											:	"hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300",
 										)}>
 										<Icon className="size-5 shrink-0" />
 										<span className="flex-1 text-left">{item.label}</span>
@@ -165,19 +167,15 @@ export function Sidebar({
 													className="bg-zinc-200 dark:bg-zinc-700 text-xs text-zinc-900 dark:text-zinc-100 border-none">
 													{item.badge}
 												</Badge>
-												{clientsExpanded ? (
+												{clientsExpanded ?
 													<ChevronDown className="size-4" />
-												) : (
-													<ChevronRight className="size-4" />
-												)}
+												:	<ChevronRight className="size-4" />}
 											</div>
 										)}
 										{isToolsSection &&
-											(toolsExpanded ? (
+											(toolsExpanded ?
 												<ChevronDown className="size-4" />
-											) : (
-												<ChevronRight className="size-4" />
-											))}
+											:	<ChevronRight className="size-4" />)}
 									</button>
 
 									{/* Client List (shown when Clients is expanded) */}
@@ -192,7 +190,7 @@ export function Sidebar({
 													className={cn(
 														"w-full p-2.5 rounded-lg text-left transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-800",
 														selectedClient === client.id &&
-															"bg-zinc-100 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 font-medium"
+															"bg-zinc-100 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 font-medium",
 													)}>
 													<div className="flex items-center gap-2">
 														<Avatar className="size-8 border border-zinc-200 dark:border-zinc-700">
@@ -235,7 +233,7 @@ export function Sidebar({
 														className={cn(
 															"w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-800",
 															isToolActive &&
-																"bg-violet-100 dark:bg-violet-950/50 text-violet-600 dark:text-violet-400 font-medium"
+																"bg-violet-100 dark:bg-violet-950/50 text-violet-600 dark:text-violet-400 font-medium",
 														)}>
 														<ToolIcon className="size-4 shrink-0" />
 														<span className="flex-1 text-left">{tool.label}</span>
@@ -278,7 +276,7 @@ export function Sidebar({
 	if (user?.role === "SUPER_ADMIN" || user?.role === "ADMIN") {
 		mobileNavigationItems.push(
 			{ id: "audit-logs", label: "Audit Logs", icon: Activity },
-			{ id: "permissions", label: "PA Permissions", icon: ShieldCheck }
+			{ id: "permissions", label: "PA Permissions", icon: ShieldCheck },
 		);
 	}
 
@@ -310,9 +308,9 @@ export function Sidebar({
 								}}
 								className={cn(
 									"w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm transition-colors",
-									isActive
-										? "bg-violet-100 dark:bg-violet-950/50 text-violet-600 dark:text-violet-400"
-										: "hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300"
+									isActive ?
+										"bg-violet-100 dark:bg-violet-950/50 text-violet-600 dark:text-violet-400"
+									:	"hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300",
 								)}>
 								<Icon className="size-5 shrink-0" />
 								<span className="flex-1 text-left">{item.label}</span>

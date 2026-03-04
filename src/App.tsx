@@ -14,6 +14,7 @@ import { AuditLogs } from "./Page/AuditLogs";
 import { PermissionManager } from "./Page/PermissionManager";
 import { PAManager } from "./Page/PAManager";
 import { Bookings } from "./Page/Bookings";
+import { ConciergeManagement } from "./Page/ConciergeManagement";
 import {
 	BrowserRouter,
 	Routes,
@@ -190,6 +191,10 @@ function App() {
 							<Route
 								path="referrals"
 								element={<ReferralProgram />}
+							/>
+							<Route
+								path="concierge"
+								element={<ConciergeManagement />}
 							/>
 							<Route
 								path="audit-logs"

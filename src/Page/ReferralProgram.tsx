@@ -132,6 +132,8 @@ export function ReferralProgram() {
 						(item: Record<string, any>) => ({
 							clientId: item.referralCode,
 							clientName: item.name || "Unknown",
+							referralCode: item.referralCode,
+							referralLink: `https://wa.me/your_bot_number?text=Hi, I want to join LuxePass using referral code ${item.referralCode}`,
 							totalReferrals: item.count,
 							successfulReferrals: item.count,
 							pendingReferrals: 0,
