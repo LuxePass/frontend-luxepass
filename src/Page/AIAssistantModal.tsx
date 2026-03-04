@@ -74,7 +74,7 @@ export function AIAssistantModal({
 		try {
 			const { data } = await api.post("/ai/chat", { message: currentInput });
 
-			if (data.success) {
+			if (data.success && data.data && data.data.reply) {
 				const aiMessage: Message = {
 					id: (Date.now() + 1).toString(),
 					role: "assistant",
@@ -88,12 +88,14 @@ export function AIAssistantModal({
 			} else {
 				throw new Error(data.message || "Failed to get AI response");
 			}
-		} catch {
+		} catch (error: any) {
+			// Extract error message from backend response if available
+			const backendError = error.response?.data?.error?.message || error.message;
+
 			const errorMessage: Message = {
 				id: (Date.now() + 1).toString(),
 				role: "assistant",
-				content:
-					"Sorry, I encountered an error. Please check your connection and try again.",
+				content: `Error: ${backendError || "Something went wrong. Please try again later."}`,
 				timestamp: new Date().toLocaleTimeString("en-US", {
 					hour: "2-digit",
 					minute: "2-digit",
