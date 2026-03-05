@@ -5,6 +5,7 @@ import {
 	ShieldAlert,
 	Building2,
 	Users,
+	Tag,
 } from "lucide-react";
 
 export function Tools() {
@@ -43,6 +44,12 @@ export function Tools() {
 					className="p-6 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-violet-300 dark:hover:border-violet-700 transition-colors flex flex-col items-center gap-2">
 					<Users className="size-8 text-indigo-600 dark:text-indigo-400" />
 					<span className="text-sm">Referrals</span>
+				</button>
+				<button
+					onClick={() => navigate("/concierge")}
+					className="p-6 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-violet-300 dark:hover:border-violet-700 transition-colors flex flex-col items-center gap-2">
+					<Tag className="size-8 text-pink-600 dark:text-pink-400" />
+					<span className="text-sm">Concierge</span>
 				</button>
 			</div>
 		</div>

@@ -21,6 +21,7 @@ import {
 	LayoutDashboard,
 	Calendar,
 	Tag,
+	Wallet,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { cn } from "../utils";
@@ -102,6 +103,7 @@ export function Sidebar({
 			navigationItems.push(
 				{ id: "bookings", label: "Bookings", icon: Calendar },
 				{ id: "concierge", label: "Concierge", icon: Tag },
+				{ id: "wallet", label: "Wallet", icon: Wallet },
 				{ id: "audit-logs", label: "Audit Logs", icon: Activity },
 				{ id: "permissions", label: "PA Permissions", icon: ShieldCheck },
 				{ id: "pa-management", label: "PA Management", icon: Users },
@@ -277,6 +279,7 @@ export function Sidebar({
 		mobileNavigationItems.push(
 			{ id: "bookings", label: "Bookings", icon: Calendar },
 			{ id: "concierge", label: "Concierge", icon: Tag },
+			{ id: "wallet", label: "Wallet", icon: Wallet },
 			{ id: "audit-logs", label: "Audit Logs", icon: Activity },
 			{ id: "permissions", label: "PA Permissions", icon: ShieldCheck },
 		);

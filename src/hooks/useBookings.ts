@@ -5,7 +5,7 @@ import { useApi } from "./useApi";
 export interface Booking {
 	id: string;
 	userId: string;
-	type: "SHORTLET" | "FLIGHT";
+	type: "SHORTLET" | "FLIGHT" | "CONCIERGE";
 	status: "INQUIRY" | "CONFIRMED" | "CANCELLED" | "COMPLETED";
 	propertyId?: string;
 	checkIn?: string;

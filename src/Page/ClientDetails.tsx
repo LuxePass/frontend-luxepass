@@ -141,12 +141,16 @@ export function ClientDetails({ clientId, onClose }: ClientDetailsProps) {
 		).length;
 		const lifetimeValue = clientBookings
 			.filter((b) => b.status === "COMPLETED" || b.status === "CONFIRMED")
-			.reduce((sum, b) => sum + parseFloat(b.totalAmount), 0);
+			.reduce((sum, b) => sum + parseFloat(b.totalAmount || "0"), 0);
 
 		const completionRate =
 			totalRequests > 0 ?
 				Math.round((completedRequests / totalRequests) * 100)
 			:	0;
+
+		const sortedBookings = [...clientBookings].sort(
+			(a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+		);
 
 		return {
 			totalRequests,
@@ -154,6 +158,7 @@ export function ClientDetails({ clientId, onClose }: ClientDetailsProps) {
 			pendingRequests,
 			lifetimeValue,
 			completionRate,
+			sortedBookings,
 		};
 	}, [clientBookings]);
 
@@ -464,13 +469,15 @@ export function ClientDetails({ clientId, onClose }: ClientDetailsProps) {
 						</h3>
 						<ScrollArea className="h-40">
 							<div className="space-y-3">
-								{clientBookings.slice(0, 5).map((booking) => (
+								{stats.sortedBookings.slice(0, 5).map((booking) => (
 									<div
 										key={booking.id}
 										className="flex items-center justify-between text-sm">
 										<div className="flex flex-col">
 											<span className="font-medium capitalize">
-												{booking.type.toLowerCase()} booking
+												{booking.type === "CONCIERGE" ?
+													"Concierge Request"
+												:	`${booking.type.toLowerCase()} booking`}
 											</span>
 											<span className="text-xs text-zinc-500">
 												{new Date(booking.createdAt).toLocaleDateString()}
@@ -486,7 +493,7 @@ export function ClientDetails({ clientId, onClose }: ClientDetailsProps) {
 										</Badge>
 									</div>
 								))}
-								{clientBookings.length === 0 && (
+								{stats.sortedBookings.length === 0 && (
 									<p className="text-sm text-zinc-500 italic text-center py-4">
 										No recent activity
 									</p>
