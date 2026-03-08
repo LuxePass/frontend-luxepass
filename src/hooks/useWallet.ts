@@ -93,7 +93,7 @@ export function useWallet() {
 			securityAnswer?: string;
 			userIdentifier?: string;
 		}) => {
-			const response = await api.post("/transfers", transferData);
+			const response = await api.post("/transfers/pa-withdraw", transferData);
 			return response.data?.data;
 		},
 		[],

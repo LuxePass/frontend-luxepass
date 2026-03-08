@@ -57,39 +57,48 @@ export function ConciergeBookings() {
 	const [searchQuery, setSearchQuery] = useState("");
 	const [statusFilter] = useState("all");
 	const [createOpen, setCreateOpen] = useState(false);
+	const [conciergeItems, setConciergeItems] = useState<any[]>([]);
 	const [newBooking, setNewBooking] = useState({
 		userId: "",
-		propertyId: "",
-		checkIn: "",
-		checkOut: "",
+		conciergeItemId: "",
+		notes: "",
 	});
 	const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
 
 	useEffect(() => {
 		getBookings({ type: "CONCIERGE" });
 		getAssignedUsers();
-		getListings();
-	}, [getBookings, getAssignedUsers, getListings]);
+
+		// Fetch Concierge Items
+		const fetchConciergeItems = async () => {
+			try {
+				const res = await api.get("/concierge");
+				if (res.data?.success) {
+					setConciergeItems(res.data.data.data || []);
+				}
+			} catch (e) {
+				console.error(e);
+			}
+		};
+		fetchConciergeItems();
+	}, [getBookings, getAssignedUsers]);
 
 	const handleCreateBooking = async () => {
-		if (
-			!newBooking.userId ||
-			!newBooking.propertyId ||
-			!newBooking.checkIn ||
-			!newBooking.checkOut
-		) {
-			customToast.error("Please fill all fields");
+		if (!newBooking.userId || !newBooking.conciergeItemId) {
+			customToast.error("Please fill all required fields");
 			return;
 		}
 
 		try {
-			// Simulate Payment first
-			customToast.success("Payment Successful (Simulated)");
+			// Find item name
+			const item = conciergeItems.find((i) => i.id === newBooking.conciergeItemId);
+			const itemName = item ? item.name : newBooking.conciergeItemId;
 
-			// Create Booking using PA-specific endpoint that bypasses security verification
+			// Create Booking
 			await api.post("/bookings/pa-create", {
-				...newBooking,
-				type: "SHORTLET", // defaulting
+				userId: newBooking.userId,
+				type: "CONCIERGE",
+				specialRequests: `Concierge Item: ${itemName}. Notes: ${newBooking.notes}`,
 			});
 			customToast.success("Booking created successfully");
 			setCreateOpen(false);
@@ -191,57 +200,38 @@ export function ConciergeBookings() {
 										</Select>
 									</div>
 									<div className="grid gap-2">
-										<Label htmlFor="property">Property</Label>
+										<Label htmlFor="conciergeItem">Concierge Item</Label>
 										<Select
-											value={newBooking.propertyId}
+											value={newBooking.conciergeItemId}
 											onValueChange={(val) =>
-												setNewBooking({ ...newBooking, propertyId: val })
+												setNewBooking({ ...newBooking, conciergeItemId: val })
 											}>
 											<SelectTrigger className="bg-zinc-50 dark:bg-zinc-950">
-												<SelectValue placeholder="Select Property" />
+												<SelectValue placeholder="Select Concierge Item" />
 											</SelectTrigger>
 											<SelectContent className="max-h-[200px]">
-												{listings.map((l) => (
+												{conciergeItems.map((item) => (
 													<SelectItem
-														key={l.id}
-														value={l.id}>
-														{l.name} - {l.pricePerNight} {l.currency}
+														key={item.id}
+														value={item.id}>
+														{item.name} - {parseFloat(item.price).toLocaleString()}{" "}
+														{item.currency}
 													</SelectItem>
 												))}
 											</SelectContent>
 										</Select>
 									</div>
-									<div className="grid grid-cols-2 gap-4">
-										<div className="grid gap-2">
-											<Label htmlFor="checkin">Check In</Label>
-											<Input
-												id="checkin"
-												type="date"
-												value={newBooking.checkIn}
-												onChange={(e) =>
-													setNewBooking({
-														...newBooking,
-														checkIn: e.target.value,
-													})
-												}
-												className="bg-zinc-50 dark:bg-zinc-950"
-											/>
-										</div>
-										<div className="grid gap-2">
-											<Label htmlFor="checkout">Check Out</Label>
-											<Input
-												id="checkout"
-												type="date"
-												value={newBooking.checkOut}
-												onChange={(e) =>
-													setNewBooking({
-														...newBooking,
-														checkOut: e.target.value,
-													})
-												}
-												className="bg-zinc-50 dark:bg-zinc-950"
-											/>
-										</div>
+									<div className="grid gap-2">
+										<Label htmlFor="notes">Additional Notes</Label>
+										<Input
+											id="notes"
+											placeholder="Optional requests..."
+											value={newBooking.notes}
+											onChange={(e) =>
+												setNewBooking({ ...newBooking, notes: e.target.value })
+											}
+											className="bg-zinc-50 dark:bg-zinc-950"
+										/>
 									</div>
 								</div>
 								<DialogFooter>
