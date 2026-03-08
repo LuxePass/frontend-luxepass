@@ -28,7 +28,6 @@ import {
 import { Input } from "../components/ui/input";
 import { customToast } from "./CustomToast";
 import { useUsers } from "../hooks/useUsers";
-import { useListings } from "../hooks/useListings";
 import { Label } from "../components/ui/label";
 import {
 	Select,
@@ -53,11 +52,12 @@ export function ConciergeBookings() {
 	const { bookings, loading, getBookings, updateBookingStatus, confirmBooking } =
 		useBookings();
 	const { users, getAssignedUsers } = useUsers();
-	const { listings, getListings } = useListings();
 	const [searchQuery, setSearchQuery] = useState("");
 	const [statusFilter] = useState("all");
 	const [createOpen, setCreateOpen] = useState(false);
-	const [conciergeItems, setConciergeItems] = useState<any[]>([]);
+	const [conciergeItems, setConciergeItems] = useState<
+		{ id: string; name: string; price: string; currency: string }[]
+	>([]);
 	const [newBooking, setNewBooking] = useState({
 		userId: "",
 		conciergeItemId: "",

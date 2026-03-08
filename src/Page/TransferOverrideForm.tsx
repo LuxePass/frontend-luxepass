@@ -31,13 +31,8 @@ import { CheckCircle2, XCircle, Clock } from "lucide-react";
 
 export function TransferOverrideForm() {
 	const [showConfirm, setShowConfirm] = useState(false);
-	const {
-		transfers,
-		getTransfers,
-		approveTransfer,
-		rejectTransfer,
-		loading: loadingTransfers,
-	} = useTransfers();
+	const { transfers, getTransfers, approveTransfer, rejectTransfer } =
+		useTransfers();
 
 	useEffect(() => {
 		getTransfers();
