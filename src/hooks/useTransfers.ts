@@ -39,11 +39,23 @@ export function useTransfers() {
 		[request],
 	);
 
+	const approveTransfer = useCallback(async (id: string, notes?: string) => {
+		const response = await api.patch(`/transfers/${id}/approve`, { notes });
+		return response.data?.data;
+	}, []);
+
+	const rejectTransfer = useCallback(async (id: string, notes?: string) => {
+		const response = await api.patch(`/transfers/${id}/reject`, { notes });
+		return response.data?.data;
+	}, []);
+
 	return {
 		transfers: data?.data || [],
 		meta: data?.meta,
 		loading,
 		error,
 		getTransfers,
+		approveTransfer,
+		rejectTransfer,
 	};
 }

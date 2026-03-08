@@ -102,7 +102,7 @@ export function Sidebar({
 		if (user?.role === "SUPER_ADMIN" || user?.role === "ADMIN") {
 			navigationItems.push(
 				{ id: "bookings", label: "Bookings", icon: Calendar },
-				{ id: "concierge", label: "Concierge", icon: Tag },
+				{ id: "conceirg-bookings", label: "Concierge Bookings", icon: Tag },
 				{ id: "wallet", label: "Wallet", icon: Wallet },
 				{ id: "audit-logs", label: "Audit Logs", icon: Activity },
 				{ id: "permissions", label: "PA Permissions", icon: ShieldCheck },

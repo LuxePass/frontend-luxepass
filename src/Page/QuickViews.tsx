@@ -102,11 +102,17 @@ export function QuickViews({
 				onClick: onChatClick,
 				badge: { text: conversations.length.toString(), color: "bg-green-600" },
 				loading: loadingChat,
-				items: conversations.slice(0, 3).map((conv) => ({
-					text: `${conv.clientName}: ${conv.lastMessage}`,
-					time: conv.lastMessageTime || "Just now",
-					urgent: conv.unreadCount > 0,
-				})),
+				items: conversations.slice(0, 3).map((conv) => {
+					let combinedText = `${conv.clientName}: ${conv.lastMessage}`;
+					if (combinedText.length > 150) {
+						combinedText = combinedText.substring(0, 150) + "...";
+					}
+					return {
+						text: combinedText,
+						time: conv.lastMessageTime || "Just now",
+						urgent: conv.unreadCount > 0,
+					};
+				}),
 			},
 			{
 				title: "Transfer Override",
@@ -231,7 +237,7 @@ export function QuickViews({
 												{subItem.urgent && (
 													<AlertCircle className="size-3 text-red-600 dark:text-red-400 shrink-0" />
 												)}
-												<span className="truncate text-zinc-700 dark:text-zinc-300">
+												<span className="line-clamp-2 text-wrap break-words text-zinc-700 dark:text-zinc-300">
 													{subItem.text}
 												</span>
 											</div>

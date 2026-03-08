@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { ShieldAlert, Send, AlertTriangle } from "lucide-react";
 import { customToast } from "./CustomToast";
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -25,9 +26,52 @@ import {
 } from "../components/ui/alert-dialog";
 import { Badge } from "../components/ui/badge";
 import { ScrollArea } from "../components/ui/scroll-area";
+import { useTransfers } from "../hooks/useTransfers";
+import { CheckCircle2, XCircle, Clock } from "lucide-react";
 
 export function TransferOverrideForm() {
 	const [showConfirm, setShowConfirm] = useState(false);
+	const {
+		transfers,
+		getTransfers,
+		approveTransfer,
+		rejectTransfer,
+		loading: loadingTransfers,
+	} = useTransfers();
+
+	useEffect(() => {
+		getTransfers();
+	}, [getTransfers]);
+
+	const pendingTransfers = useMemo(
+		() => transfers.filter((t) => t.status === "PENDING"),
+		[transfers],
+	);
+
+	const handleApprove = async (id: string) => {
+		try {
+			await approveTransfer(id);
+			customToast.success("Transfer approved successfully");
+			getTransfers();
+		} catch (error: any) {
+			customToast.error(
+				error.response?.data?.message || "Failed to approve transfer",
+			);
+		}
+	};
+
+	const handleReject = async (id: string) => {
+		try {
+			await rejectTransfer(id);
+			customToast.success("Transfer rejected successfully");
+			getTransfers();
+		} catch (error: any) {
+			customToast.error(
+				error.response?.data?.message || "Failed to reject transfer",
+			);
+		}
+	};
+
 	const [formData, setFormData] = useState({
 		clientName: "",
 		transferType: "",
@@ -94,6 +138,56 @@ export function TransferOverrideForm() {
 							</div>
 						</div>
 
+						{/* Pending Transfers Section */}
+						{pendingTransfers.length > 0 && (
+							<div className="mb-6 lg:mb-8">
+								<h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+									<Clock className="size-5 text-orange-500" />
+									Pending Transfer Authorizations
+								</h3>
+								<div className="space-y-3">
+									{pendingTransfers.map((transfer) => (
+										<div
+											key={transfer.id}
+											className="p-4 rounded-xl border border-orange-200 dark:border-orange-900 bg-orange-50/50 dark:bg-orange-950/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+											<div>
+												<div className="flex items-center gap-2 mb-1">
+													<Badge className="bg-orange-100 text-orange-700 hover:bg-orange-100 border-none">
+														{transfer.currency} {parseFloat(transfer.amount).toLocaleString()}
+													</Badge>
+													<span className="text-xs text-zinc-500 uppercase tracking-wider font-semibold">
+														Ref: {transfer.reference}
+													</span>
+												</div>
+												<p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+													{transfer.narration || "No narration provided"}
+												</p>
+												<p className="text-xs text-zinc-500 mt-1">
+													Requested: {new Date(transfer.createdAt).toLocaleString()}
+												</p>
+											</div>
+											<div className="flex gap-2 w-full sm:w-auto">
+												<Button
+													size="sm"
+													variant="outline"
+													onClick={() => handleReject(transfer.id)}
+													className="flex-1 sm:flex-none border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700">
+													<XCircle className="size-4 mr-1.5" /> Reject
+												</Button>
+												<Button
+													size="sm"
+													onClick={() => handleApprove(transfer.id)}
+													className="flex-1 sm:flex-none bg-green-600 hover:bg-green-700 text-white">
+													<CheckCircle2 className="size-4 mr-1.5" /> Authorize
+												</Button>
+											</div>
+										</div>
+									))}
+								</div>
+							</div>
+						)}
+
+						<h3 className="text-lg font-bold mb-4">Manual Override Request</h3>
 						<form
 							onSubmit={handleSubmit}
 							className="space-y-4 lg:space-y-6">

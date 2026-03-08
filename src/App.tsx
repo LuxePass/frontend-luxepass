@@ -14,6 +14,7 @@ import { AuditLogs } from "./Page/AuditLogs";
 import { PermissionManager } from "./Page/PermissionManager";
 import { PAManager } from "./Page/PAManager";
 import { Bookings } from "./Page/Bookings";
+import { ConciergeBookings } from "./Page/ConciergeBookings";
 import { ConciergeManagement } from "./Page/ConciergeManagement";
 import {
 	BrowserRouter,
@@ -229,6 +230,14 @@ function App() {
 								element={
 									<AdminGuard>
 										<Bookings />
+									</AdminGuard>
+								}
+							/>
+							<Route
+								path="conceirg-bookings"
+								element={
+									<AdminGuard>
+										<ConciergeBookings />
 									</AdminGuard>
 								}
 							/>

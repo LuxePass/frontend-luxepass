@@ -49,7 +49,7 @@ import {
 import { Plus } from "lucide-react";
 import api from "../services/api";
 
-export function Bookings() {
+export function ConciergeBookings() {
 	const { bookings, loading, getBookings, updateBookingStatus, confirmBooking } =
 		useBookings();
 	const { users, getAssignedUsers } = useUsers();
@@ -66,7 +66,7 @@ export function Bookings() {
 	const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
 
 	useEffect(() => {
-		getBookings();
+		getBookings({ type: "CONCIERGE" });
 		getAssignedUsers();
 		getListings();
 	}, [getBookings, getAssignedUsers, getListings]);
@@ -151,7 +151,7 @@ export function Bookings() {
 			<Card className="flex-1 flex flex-col bg-white dark:bg-zinc-900/50 border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-none rounded-xl">
 				<div className="p-4 lg:p-6 border-b border-zinc-200 dark:border-zinc-800">
 					<div className="flex items-center justify-between mb-4">
-						<h3 className="font-bold">Bookings Management</h3>
+						<h3 className="font-bold">Concierge Bookings</h3>
 						<Dialog
 							open={createOpen}
 							onOpenChange={setCreateOpen}>
