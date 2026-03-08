@@ -182,8 +182,8 @@ export function Bookings() {
 											<SelectContent className="max-h-[200px]">
 												{users.map((u) => (
 													<SelectItem
-														key={u.id}
-														value={u.id}>
+														key={u.uniqueId}
+														value={u.uniqueId}>
 														{u.name}
 													</SelectItem>
 												))}

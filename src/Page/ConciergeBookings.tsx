@@ -98,7 +98,11 @@ export function ConciergeBookings() {
 			await api.post("/bookings/pa-create", {
 				userId: newBooking.userId,
 				type: "CONCIERGE",
-				specialRequests: `Concierge Item: ${itemName}. Notes: ${newBooking.notes}`,
+				specialRequests:
+					`Concierge Item: ${itemName}. Notes: ${newBooking.notes}`.substring(
+						0,
+						950,
+					),
 			});
 			customToast.success("Booking created successfully");
 			setCreateOpen(false);
@@ -191,8 +195,8 @@ export function ConciergeBookings() {
 											<SelectContent className="max-h-[200px]">
 												{users.map((u) => (
 													<SelectItem
-														key={u.id}
-														value={u.id}>
+														key={u.uniqueId}
+														value={u.uniqueId}>
 														{u.name}
 													</SelectItem>
 												))}
