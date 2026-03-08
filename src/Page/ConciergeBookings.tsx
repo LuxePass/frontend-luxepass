@@ -106,7 +106,13 @@ export function ConciergeBookings() {
 			});
 			customToast.success("Booking created successfully");
 			setCreateOpen(false);
-			getBookings();
+			getBookings({ type: "CONCIERGE" });
+			// Reset form
+			setNewBooking({
+				userId: "",
+				conciergeItemId: "",
+				notes: "",
+			});
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		} catch (err: any) {
 			const msg = err.response?.data?.error?.message || "Failed to create booking";

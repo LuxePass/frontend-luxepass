@@ -62,6 +62,7 @@ export function Bookings() {
 		propertyId: "",
 		checkIn: "",
 		checkOut: "",
+		notes: "",
 	});
 	const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
 
@@ -83,17 +84,23 @@ export function Bookings() {
 		}
 
 		try {
-			// Simulate Payment first
-			customToast.success("Payment Successful (Simulated)");
-
 			// Create Booking using PA-specific endpoint that bypasses security verification
 			await api.post("/bookings/pa-create", {
 				...newBooking,
 				type: "SHORTLET", // defaulting
+				specialRequests: newBooking.notes.substring(0, 950),
 			});
 			customToast.success("Booking created successfully");
 			setCreateOpen(false);
 			getBookings();
+			// Reset form
+			setNewBooking({
+				userId: "",
+				propertyId: "",
+				checkIn: "",
+				checkOut: "",
+				notes: "",
+			});
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		} catch (err: any) {
 			const msg = err.response?.data?.error?.message || "Failed to create booking";
@@ -242,6 +249,18 @@ export function Bookings() {
 												className="bg-zinc-50 dark:bg-zinc-950"
 											/>
 										</div>
+									</div>
+									<div className="grid gap-2">
+										<Label htmlFor="notes">Additional Notes</Label>
+										<Input
+											id="notes"
+											placeholder="Optional requests..."
+											value={newBooking.notes}
+											onChange={(e) =>
+												setNewBooking({ ...newBooking, notes: e.target.value })
+											}
+											className="bg-zinc-50 dark:bg-zinc-950"
+										/>
 									</div>
 								</div>
 								<DialogFooter>
