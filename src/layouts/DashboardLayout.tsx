@@ -85,6 +85,9 @@ export default function DashboardLayout() {
 			case "bookings":
 				navigate("/bookings");
 				break;
+			case "conceirg-bookings":
+				navigate("/conceirg-bookings");
+				break;
 			case "pa-management":
 				navigate("/pa-management");
 				break;
