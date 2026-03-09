@@ -13,69 +13,68 @@ import {
 import { cn } from "../utils";
 
 export function MetricsCards() {
-	const { users, getAssignedUsers, loading: loadingUsers } = useUsers();
-	const { bookings, getBookings, loading: loadingBookings } = useBookings();
+	const {
+		dashboardStats: userStats,
+		getDashboardStats: getUserDashboardStats,
+		dashboardStatsLoading: loadingUsers,
+	} = useUsers();
+	const {
+		dashboardStats: bookingStats,
+		getDashboardStats: getBookingDashboardStats,
+		dashboardStatsLoading: loadingBookings,
+	} = useBookings();
 
 	useEffect(() => {
 		const fetchDashboardData = async () => {
 			try {
-				await getAssignedUsers();
+				await Promise.allSettled([
+					getUserDashboardStats(),
+					getBookingDashboardStats(),
+				]);
 			} catch (error: unknown) {
-				// Silently handle permission errors - the hook already sets error state
-				const err = error as { response?: { status?: number } };
-				if (err?.response?.status === 403) {
-					console.warn("Permission denied for assigned users");
-				}
-			}
-
-			try {
-				await getBookings();
-			} catch (error: unknown) {
-				// Silently handle permission errors - the hook already sets error state
-				const err = error as { response?: { status?: number } };
-				if (err?.response?.status === 403) {
-					console.warn("Permission denied for bookings");
-				}
+				console.warn("Failed to fetch dashboard stats", error);
 			}
 		};
 
 		fetchDashboardData();
-	}, [getAssignedUsers, getBookings]);
+	}, [getUserDashboardStats, getBookingDashboardStats]);
 
-	const pendingBookings = bookings.filter((b) => b.status === "INQUIRY").length;
-	const confirmedBookings = bookings.filter(
-		(b) => b.status === "CONFIRMED",
-	).length;
-	const totalRevenue = bookings
-		.filter((b) => b.status === "CONFIRMED")
-		.reduce((sum, b) => sum + parseFloat(b.totalAmount), 0);
+	const pendingBookings = bookingStats?.pendingInquiries ?? 0;
+	const confirmedBookings = bookingStats?.confirmedBookings ?? 0;
+	const totalRevenue = bookingStats?.totalRevenue ?? 0;
+	const assignedClients = userStats?.assignedClients ?? 0;
+
+	const pendingChange = bookingStats?.growthRates?.pendingInquiries ?? 0;
+	const confirmedChange = bookingStats?.growthRates?.confirmedBookings ?? 0;
+	const revenueChange = bookingStats?.growthRates?.revenue ?? 0;
+	const clientsChange = userStats?.growthRates?.assignedClients ?? 0;
 
 	const metrics = [
 		{
 			label: "Assigned Clients",
-			value: users.length.toString(),
-			change: 5.2,
+			value: assignedClients.toString(),
+			change: clientsChange,
 			icon: UsersIcon,
 			iconColor: "text-orange-400",
 		},
 		{
 			label: "Pending Inquiries",
 			value: pendingBookings.toString(),
-			change: -15.3,
+			change: pendingChange,
 			icon: Clock,
 			iconColor: "text-blue-400",
 		},
 		{
 			label: "Confirmed Bookings",
 			value: confirmedBookings.toString(),
-			change: 12.5,
+			change: confirmedChange,
 			icon: CheckCircle2,
 			iconColor: "text-green-400",
 		},
 		{
 			label: "Estimated Revenue",
 			value: "₦" + totalRevenue.toLocaleString(),
-			change: 2.1,
+			change: revenueChange,
 			icon: TrendingUp,
 			iconColor: "text-violet-400",
 		},

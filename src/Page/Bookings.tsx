@@ -57,13 +57,15 @@ export function Bookings() {
 	const [searchQuery, setSearchQuery] = useState("");
 	const [statusFilter] = useState("all");
 	const [createOpen, setCreateOpen] = useState(false);
-	const [newBooking, setNewBooking] = useState({
-		userId: "",
-		propertyId: "",
-		checkIn: "",
-		checkOut: "",
-		notes: "",
-	});
+	const [selectedUserId, setSelectedUserId] = useState("");
+	const [newBookings, setNewBookings] = useState([
+		{
+			propertyId: "",
+			checkIn: "",
+			checkOut: "",
+			notes: "",
+		},
+	]);
 	const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
 
 	useEffect(() => {
@@ -72,38 +74,79 @@ export function Bookings() {
 		getListings();
 	}, [getBookings, getAssignedUsers, getListings]);
 
+	const handleAddBookingRow = () => {
+		setNewBookings([
+			...newBookings,
+			{ propertyId: "", checkIn: "", checkOut: "", notes: "" },
+		]);
+	};
+
+	const handleRemoveBookingRow = (index: number) => {
+		const updated = [...newBookings];
+		updated.splice(index, 1);
+		setNewBookings(updated);
+	};
+
+	const handleUpdateBookingRow = (
+		index: number,
+		field: string,
+		value: string,
+	) => {
+		const updated = [...newBookings];
+		updated[index] = { ...updated[index], [field]: value };
+		setNewBookings(updated);
+	};
+
 	const handleCreateBooking = async () => {
-		if (
-			!newBooking.userId ||
-			!newBooking.propertyId ||
-			!newBooking.checkIn ||
-			!newBooking.checkOut
-		) {
-			customToast.error("Please fill all fields");
+		if (!selectedUserId) {
+			customToast.error("Please select a user");
 			return;
 		}
 
+		// Validate all rows
+		for (const booking of newBookings) {
+			if (!booking.propertyId || !booking.checkIn || !booking.checkOut) {
+				customToast.error("Please fill all required fields in all rows");
+				return;
+			}
+		}
+
 		try {
-			// Create Booking using PA-specific endpoint that bypasses security verification
-			await api.post("/bookings/pa-create", {
-				...newBooking,
-				type: "SHORTLET", // defaulting
-				specialRequests: newBooking.notes.substring(0, 950),
-			});
-			customToast.success("Booking created successfully");
+			if (newBookings.length === 1) {
+				// Create single booking using PA-specific endpoint
+				await api.post("/bookings/pa-create", {
+					userId: selectedUserId,
+					...newBookings[0],
+					type: "SHORTLET",
+					specialRequests: newBookings[0].notes.substring(0, 950),
+				});
+				customToast.success("Booking created successfully");
+			} else {
+				// Create bulk bookings
+				const mappedBookings = newBookings.map((b) => ({
+					propertyId: b.propertyId,
+					checkIn: b.checkIn,
+					checkOut: b.checkOut,
+					type: "SHORTLET",
+					specialRequests: b.notes.substring(0, 950),
+				}));
+
+				await api.post("/bookings/pa-create-bulk", {
+					userId: selectedUserId,
+					bookings: mappedBookings,
+				});
+				customToast.success(`Successfully created ${newBookings.length} bookings`);
+			}
+
 			setCreateOpen(false);
 			getBookings();
 			// Reset form
-			setNewBooking({
-				userId: "",
-				propertyId: "",
-				checkIn: "",
-				checkOut: "",
-				notes: "",
-			});
+			setSelectedUserId("");
+			setNewBookings([{ propertyId: "", checkIn: "", checkOut: "", notes: "" }]);
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		} catch (err: any) {
-			const msg = err.response?.data?.error?.message || "Failed to create booking";
+			const msg =
+				err.response?.data?.error?.message || "Failed to create booking(s)";
 			customToast.error(msg);
 		}
 	};
@@ -168,21 +211,19 @@ export function Bookings() {
 									Create Booking
 								</Button>
 							</DialogTrigger>
-							<DialogContent className="sm:max-w-[425px] bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
+							<DialogContent className="sm:max-w-[700px] max-w-[95vw] overflow-y-auto max-h-[90vh] bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
 								<DialogHeader>
-									<DialogTitle>Create New Booking</DialogTitle>
+									<DialogTitle>Create New Booking(s)</DialogTitle>
 									<DialogDescription>
-										Select user and property to create a booking.
+										Select user and add one or more properties to book for them.
 									</DialogDescription>
 								</DialogHeader>
 								<div className="grid gap-4 py-4">
 									<div className="grid gap-2">
-										<Label htmlFor="user">User</Label>
+										<Label htmlFor="user">Select User</Label>
 										<Select
-											value={newBooking.userId}
-											onValueChange={(val) =>
-												setNewBooking({ ...newBooking, userId: val })
-											}>
+											value={selectedUserId}
+											onValueChange={setSelectedUserId}>
 											<SelectTrigger className="bg-zinc-50 dark:bg-zinc-950">
 												<SelectValue placeholder="Select User" />
 											</SelectTrigger>
@@ -197,77 +238,101 @@ export function Bookings() {
 											</SelectContent>
 										</Select>
 									</div>
-									<div className="grid gap-2">
-										<Label htmlFor="property">Property</Label>
-										<Select
-											value={newBooking.propertyId}
-											onValueChange={(val) =>
-												setNewBooking({ ...newBooking, propertyId: val })
-											}>
-											<SelectTrigger className="bg-zinc-50 dark:bg-zinc-950">
-												<SelectValue placeholder="Select Property" />
-											</SelectTrigger>
-											<SelectContent className="max-h-[200px]">
-												{listings.map((l) => (
-													<SelectItem
-														key={l.id}
-														value={l.id}>
-														{l.name} - {l.pricePerNight} {l.currency}
-													</SelectItem>
-												))}
-											</SelectContent>
-										</Select>
-									</div>
-									<div className="grid grid-cols-2 gap-4">
-										<div className="grid gap-2">
-											<Label htmlFor="checkin">Check In</Label>
-											<Input
-												id="checkin"
-												type="date"
-												value={newBooking.checkIn}
-												onChange={(e) =>
-													setNewBooking({
-														...newBooking,
-														checkIn: e.target.value,
-													})
-												}
-												className="bg-zinc-50 dark:bg-zinc-950"
-											/>
+
+									<div className="space-y-4 border rounded-xl p-4 border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
+										<div className="flex items-center justify-between">
+											<Label className="text-base font-semibold">Bookings</Label>
+											<Button
+												variant="outline"
+												size="sm"
+												onClick={handleAddBookingRow}
+												className="h-8 border-violet-200 hover:bg-violet-50 text-violet-600 dark:border-violet-900 dark:hover:bg-violet-900/20">
+												<Plus className="size-3 mr-1" /> Add Another Property
+											</Button>
 										</div>
-										<div className="grid gap-2">
-											<Label htmlFor="checkout">Check Out</Label>
-											<Input
-												id="checkout"
-												type="date"
-												value={newBooking.checkOut}
-												onChange={(e) =>
-													setNewBooking({
-														...newBooking,
-														checkOut: e.target.value,
-													})
-												}
-												className="bg-zinc-50 dark:bg-zinc-950"
-											/>
-										</div>
-									</div>
-									<div className="grid gap-2">
-										<Label htmlFor="notes">Additional Notes</Label>
-										<Input
-											id="notes"
-											placeholder="Optional requests..."
-											value={newBooking.notes}
-											onChange={(e) =>
-												setNewBooking({ ...newBooking, notes: e.target.value })
-											}
-											className="bg-zinc-50 dark:bg-zinc-950"
-										/>
+
+										{newBookings.map((booking, index) => (
+											<div
+												key={index}
+												className="space-y-4 p-4 border rounded-lg bg-white dark:bg-zinc-950 relative">
+												{newBookings.length > 1 && (
+													<Button
+														variant="ghost"
+														size="icon"
+														className="absolute top-2 right-2 h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/50"
+														onClick={() => handleRemoveBookingRow(index)}>
+														<XCircle className="size-4" />
+													</Button>
+												)}
+
+												<div className="grid gap-2 pr-8">
+													<Label>Property {index + 1}</Label>
+													<Select
+														value={booking.propertyId}
+														onValueChange={(val) =>
+															handleUpdateBookingRow(index, "propertyId", val)
+														}>
+														<SelectTrigger className="bg-zinc-50 dark:bg-zinc-900">
+															<SelectValue placeholder="Select Property" />
+														</SelectTrigger>
+														<SelectContent className="max-h-[200px]">
+															{listings.map((l) => (
+																<SelectItem
+																	key={l.id}
+																	value={l.id}>
+																	{l.name} - {l.pricePerNight} {l.currency}
+																</SelectItem>
+															))}
+														</SelectContent>
+													</Select>
+												</div>
+
+												<div className="grid grid-cols-2 gap-4">
+													<div className="grid gap-2">
+														<Label>Check In</Label>
+														<Input
+															type="date"
+															value={booking.checkIn}
+															onChange={(e) =>
+																handleUpdateBookingRow(index, "checkIn", e.target.value)
+															}
+															className="bg-zinc-50 dark:bg-zinc-900"
+														/>
+													</div>
+													<div className="grid gap-2">
+														<Label>Check Out</Label>
+														<Input
+															type="date"
+															value={booking.checkOut}
+															onChange={(e) =>
+																handleUpdateBookingRow(index, "checkOut", e.target.value)
+															}
+															className="bg-zinc-50 dark:bg-zinc-900"
+														/>
+													</div>
+												</div>
+
+												<div className="grid gap-2">
+													<Label>Additional Notes (Optional)</Label>
+													<Input
+														placeholder="Optional requests for this property..."
+														value={booking.notes}
+														onChange={(e) =>
+															handleUpdateBookingRow(index, "notes", e.target.value)
+														}
+														className="bg-zinc-50 dark:bg-zinc-900"
+													/>
+												</div>
+											</div>
+										))}
 									</div>
 								</div>
-								<DialogFooter>
+								<DialogFooter className="sticky bottom-0 bg-white dark:bg-zinc-900 pt-4 mt-2 mb-[-10px] pb-4">
 									<Button
 										onClick={handleCreateBooking}
 										className="bg-violet-600 hover:bg-violet-700 text-white w-full">
-										Proceed to Payment & Book
+										Proceed to Payment & Book{" "}
+										{newBookings.length > 1 ? `(${newBookings.length} properties)` : ""}
 									</Button>
 								</DialogFooter>
 							</DialogContent>

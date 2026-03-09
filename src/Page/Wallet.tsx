@@ -67,6 +67,11 @@ export function Wallet() {
 	const [withdrawing, setWithdrawing] = useState(false);
 	const [selectedAccountId, setSelectedAccountId] = useState("primary");
 
+	// Manual account state
+	const [manualBankName, setManualBankName] = useState("");
+	const [manualAccountNumber, setManualAccountNumber] = useState("");
+	const [manualAccountName, setManualAccountName] = useState("");
+
 	useEffect(() => {
 		if (userId) {
 			getUserWallet(userId);
@@ -98,13 +103,32 @@ export function Wallet() {
 			return;
 		}
 
+		if (selectedAccountId === "manual") {
+			if (!manualBankName || !manualAccountNumber || !manualAccountName) {
+				customToast.error("Please fill all manual account details");
+				return;
+			}
+		}
+
 		setWithdrawing(true);
 		try {
+			const destinationAccount =
+				selectedAccountId === "manual" ?
+					{
+						bankName: manualBankName,
+						accountNumber: manualAccountNumber,
+						accountName: manualAccountName,
+					}
+				: selectedAccountId !== "primary" ?
+					savedBankAccounts.find((a) => a.accountNumber === selectedAccountId)
+				:	undefined;
+
 			await initiateTransfer({
 				amount: parseFloat(amount),
 				narration,
 				securityAnswer,
 				userIdentifier: userId || wallet?.userId,
+				destinationAccount,
 			});
 			customToast.success({
 				title: "Withdrawal Initiated",
@@ -114,6 +138,10 @@ export function Wallet() {
 			setAmount("");
 			setNarration("");
 			setSecurityAnswer("");
+			setManualBankName("");
+			setManualAccountNumber("");
+			setManualAccountName("");
+			setSelectedAccountId("primary");
 			if (userId) {
 				await getUserWallet(userId);
 			} else {
@@ -314,6 +342,7 @@ export function Wallet() {
 										className="h-12 bg-zinc-50 dark:bg-zinc-800 border-none focus-visible:ring-2 focus-visible:ring-violet-500 rounded-xl font-mono"
 									/>
 								</div>
+
 								<div className="space-y-2">
 									<Label
 										htmlFor="account"
@@ -341,9 +370,45 @@ export function Wallet() {
 													{account.accountNumber?.slice(-4)}) - {account.accountName}
 												</SelectItem>
 											))}
+											<SelectItem
+												value="manual"
+												className="text-violet-600 font-semibold cursor-pointer">
+												+ Add Account Manually
+											</SelectItem>
 										</SelectContent>
 									</Select>
 								</div>
+
+								{selectedAccountId === "manual" && (
+									<div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl space-y-3 border border-zinc-100 dark:border-zinc-800">
+										<Label className="text-xs font-bold uppercase tracking-widest text-zinc-500">
+											Manual Account Details
+										</Label>
+										<Input
+											placeholder="Bank Name (e.g., Zenith Bank)"
+											className="h-12 bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 rounded-xl"
+											id="manual-bank-name"
+											value={manualBankName}
+											onChange={(e) => setManualBankName(e.target.value)}
+										/>
+										<Input
+											placeholder="Account Number"
+											type="text"
+											className="h-12 bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 rounded-xl"
+											id="manual-account-number"
+											value={manualAccountNumber}
+											onChange={(e) => setManualAccountNumber(e.target.value)}
+										/>
+										<Input
+											placeholder="Account Name"
+											className="h-12 bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 rounded-xl"
+											id="manual-account-name"
+											value={manualAccountName}
+											onChange={(e) => setManualAccountName(e.target.value)}
+										/>
+									</div>
+								)}
+
 								<Button
 									onClick={handleWithdraw}
 									disabled={withdrawing}

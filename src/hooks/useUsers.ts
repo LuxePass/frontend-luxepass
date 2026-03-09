@@ -16,8 +16,21 @@ export interface User {
 	createdAt?: string;
 }
 
+// Define interface for dashboard stats
+export interface DashboardStats {
+	assignedClients: number;
+	growthRates: {
+		assignedClients: number;
+	};
+}
+
 export function useUsers() {
-	const { data, loading, error, request } = useApi<{
+	const {
+		data: usersData, // Renamed to avoid conflict with new `userStats`
+		loading: usersLoading, // Renamed to avoid conflict with new `loading`
+		error: usersError, // Renamed to avoid conflict with new `error`
+		request,
+	} = useApi<{
 		data: User[];
 		meta: {
 			totalItems: number;
@@ -27,6 +40,15 @@ export function useUsers() {
 			totalPages: number;
 		};
 	}>();
+
+	// New state for dashboard stats
+	const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(
+		null,
+	);
+	const [dashboardStatsLoading, setDashboardStatsLoading] = useState(false);
+	const [dashboardStatsError, setDashboardStatsError] = useState<string | null>(
+		null,
+	);
 
 	const getAssignedUsers = useCallback(
 		async (params?: { page?: number; limit?: number; search?: string }) => {
@@ -77,16 +99,48 @@ export function useUsers() {
 		await api.delete(`/pas/${id}`);
 	}, []);
 
+	// New function to get dashboard stats
+	const getDashboardStats = useCallback(async () => {
+		setDashboardStatsLoading(true);
+		setDashboardStatsError(null);
+		try {
+			const response = await api.get("/users/dashboard-stats");
+			setDashboardStats(response.data);
+		} catch (err: unknown) {
+			if (err && typeof err === "object" && "response" in err) {
+				const error = err as {
+					response?: { data?: { message?: string } };
+				};
+				setDashboardStatsError(
+					error.response?.data?.message || "Failed to fetch dashboard stats",
+				);
+			} else {
+				setDashboardStatsError(
+					err instanceof Error ? err.message : "Failed to fetch dashboard stats",
+				);
+			}
+			throw err;
+		} finally {
+			setDashboardStatsLoading(false);
+		}
+	}, []);
+
 	return {
-		users: data?.data || [],
-		meta: data?.meta,
-		loading,
-		error,
+		users: usersData?.data || [],
+		meta: usersData?.meta,
+		loading: usersLoading, // Renamed
+		error: usersError, // Renamed
 		getAssignedUsers,
 		getUserById,
 		getAllPAs,
 		createPA,
 		updatePA,
 		deletePA,
+		// Expose new dashboard stats and function
+		dashboardStats,
+		dashboardStatsLoading,
+		dashboardStatsError,
+		getDashboardStats,
 	};
 }
+```

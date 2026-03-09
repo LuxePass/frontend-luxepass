@@ -29,7 +29,7 @@ import { cn } from "../utils";
 const toolItems = [
 	{ id: "tasks", label: "Tasks", icon: ListTodo },
 	{ id: "livechat", label: "Live Chat", icon: MessageCircle },
-	{ id: "transfer", label: "Transfer", icon: ShieldAlert },
+	// { id: "transfer", label: "Transfer", icon: ShieldAlert },
 	{ id: "listings", label: "Listings", icon: Building2 },
 	{ id: "concierge", label: "Concierge", icon: Tag },
 ];

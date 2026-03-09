@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import api from "../services/api";
 import { useApi } from "./useApi";
 
@@ -17,8 +17,25 @@ export interface Booking {
 	property?: unknown;
 }
 
+// Define interface for dashboard stats
+export interface DashboardStats {
+	pendingInquiries: number;
+	confirmedBookings: number;
+	totalRevenue: number;
+	growthRates: {
+		pendingInquiries: number;
+		confirmedBookings: number;
+		revenue: number;
+	};
+}
+
 export function useBookings() {
-	const { data, loading, error, request } = useApi<{
+	const {
+		data: bookingsData, // Renamed to avoid conflict
+		loading: bookingsLoading, // Renamed to avoid conflict
+		error: bookingsError, // Renamed to avoid conflict
+		request,
+	} = useApi<{
 		data: Booking[];
 		meta: {
 			totalItems: number;
@@ -28,6 +45,15 @@ export function useBookings() {
 			totalPages: number;
 		};
 	}>();
+
+	// New state for dashboard stats
+	const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(
+		null,
+	);
+	const [dashboardStatsLoading, setDashboardStatsLoading] = useState(false);
+	const [dashboardStatsError, setDashboardStatsError] = useState<string | null>(
+		null,
+	);
 
 	const getBookings = useCallback(
 		async (params?: {
@@ -91,14 +117,45 @@ export function useBookings() {
 		return response.data?.data;
 	}, []);
 
+	// New function to get dashboard stats
+	const getDashboardStats = useCallback(async () => {
+		setDashboardStatsLoading(true);
+		setDashboardStatsError(null);
+		try {
+			const response = await api.get("/bookings/dashboard-stats");
+			setDashboardStats(response.data);
+		} catch (err: unknown) {
+			if (err && typeof err === "object" && "response" in err) {
+				const error = err as {
+					response?: { data?: { message?: string } };
+				};
+				setDashboardStatsError(
+					error.response?.data?.message || "Failed to fetch dashboard stats",
+				);
+			} else {
+				setDashboardStatsError(
+					err instanceof Error ? err.message : "Failed to fetch dashboard stats",
+				);
+			}
+			throw err;
+		} finally {
+			setDashboardStatsLoading(false);
+		}
+	}, []);
+
 	return {
-		bookings: data?.data || [],
-		meta: data?.meta,
-		loading,
-		error,
+		bookings: bookingsData?.data || [],
+		meta: bookingsData?.meta,
+		loading: bookingsLoading,
+		error: bookingsError,
 		getBookings,
 		getBookingById,
 		updateBookingStatus,
 		confirmBooking,
+		// Expose new dashboard stats and function
+		dashboardStats,
+		dashboardStatsLoading,
+		dashboardStatsError,
+		getDashboardStats,
 	};
 }

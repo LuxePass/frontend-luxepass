@@ -105,6 +105,10 @@ export function ReferralProgram() {
 	const [selectedActivity, setSelectedActivity] =
 		useState<ReferralActivity | null>(null);
 	const [loading, setLoading] = useState(true);
+	const [systemStats, setSystemStats] = useState({
+		conversionRate: 0,
+		growthPercentage: 0,
+	});
 
 	// Fetch data from whatsapp-backend
 	useEffect(() => {
@@ -159,6 +163,13 @@ export function ReferralProgram() {
 
 					setActivities(newActivities);
 					setClientStats(newClientStats);
+
+					if (data.data.stats) {
+						setSystemStats({
+							conversionRate: data.data.stats.conversionRate || 0,
+							growthPercentage: data.data.stats.growthPercentage || 0,
+						});
+					}
 				}
 			} catch (error) {
 				console.error("Failed to fetch referral stats:", error);
@@ -246,10 +257,14 @@ export function ReferralProgram() {
 			0,
 		),
 		totalLifetimeValue: activities.reduce((sum, a) => sum + a.lifetimeValue, 0),
-		avgConversionRate: Math.round(
-			clientStats.reduce((sum, c) => sum + c.conversionRate, 0) /
-				clientStats.length,
-		),
+		avgConversionRate:
+			systemStats.conversionRate > 0 ?
+				systemStats.conversionRate
+			:	Math.round(
+					clientStats.reduce((sum, c) => sum + c.conversionRate, 0) /
+						(clientStats.length || 1),
+				),
+		growthPercentage: systemStats.growthPercentage,
 	};
 
 	const getInitials = (name: string) => {
@@ -370,14 +385,28 @@ export function ReferralProgram() {
 									</p>
 								</div>
 							</div>
-							<div className="text-xs text-zinc-500 truncate">
-								<span className="text-green-600 dark:text-green-400">
-									{totalStats.successfulReferrals} successful
+							<div className="text-xs text-zinc-500 truncate flex items-center justify-between">
+								<span>
+									<span className="text-green-600 dark:text-green-400">
+										{totalStats.successfulReferrals} successful
+									</span>
+									{" • "}
+									<span className="text-orange-600 dark:text-orange-400">
+										{totalStats.pendingReferrals} pending
+									</span>
 								</span>
-								{" • "}
-								<span className="text-orange-600 dark:text-orange-400">
-									{totalStats.pendingReferrals} pending
-								</span>
+								{totalStats.growthPercentage !== 0 && (
+									<span
+										className={cn(
+											"px-1.5 py-0.5 rounded text-[10px]",
+											totalStats.growthPercentage > 0 ?
+												"text-green-600 bg-green-100 dark:bg-green-950/50"
+											:	"text-red-600 bg-red-100 dark:bg-red-950/50",
+										)}>
+										{totalStats.growthPercentage > 0 ? "+" : ""}
+										{totalStats.growthPercentage}%
+									</span>
+								)}
 							</div>
 						</Card>
 
