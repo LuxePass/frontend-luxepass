@@ -32,6 +32,12 @@ export interface SavedBankAccount {
 	createdAt?: string;
 }
 
+export interface DestinationAccount {
+	bankName: string;
+	accountNumber: string;
+	accountName: string;
+}
+
 export interface Transaction {
 	id: string;
 	type: string;
@@ -92,6 +98,7 @@ export function useWallet() {
 			narration?: string;
 			securityAnswer?: string;
 			userIdentifier?: string;
+			destinationAccount?: DestinationAccount;
 		}) => {
 			const response = await api.post("/transfers/pa-withdraw", transferData);
 			return response.data?.data;
