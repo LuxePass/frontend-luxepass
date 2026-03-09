@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import api from "../services/api";
 import { useApi } from "./useApi";
 
@@ -143,4 +143,3 @@ export function useUsers() {
 		getDashboardStats,
 	};
 }
-```
