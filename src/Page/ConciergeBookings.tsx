@@ -54,15 +54,17 @@ export function ConciergeBookings() {
 	const { users, getAssignedUsers } = useUsers();
 	const [searchQuery, setSearchQuery] = useState("");
 	const [statusFilter] = useState("all");
-	const [createOpen, setCreateOpen] = useState(false);
+	const [selectedUserId, setSelectedUserId] = useState("");
 	const [conciergeItems, setConciergeItems] = useState<
 		{ id: string; name: string; price: string; currency: string }[]
 	>([]);
-	const [newBooking, setNewBooking] = useState({
-		userId: "",
-		conciergeItemId: "",
-		notes: "",
-	});
+	const [createOpen, setCreateOpen] = useState(false);
+	const [newBookings, setNewBookings] = useState([
+		{
+			conciergeItemId: "",
+			notes: "",
+		},
+	]);
 	const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
 
 	useEffect(() => {
@@ -83,39 +85,87 @@ export function ConciergeBookings() {
 		fetchConciergeItems();
 	}, [getBookings, getAssignedUsers]);
 
+	const handleAddBookingRow = () => {
+		setNewBookings([...newBookings, { conciergeItemId: "", notes: "" }]);
+	};
+
+	const handleRemoveBookingRow = (index: number) => {
+		const updated = [...newBookings];
+		updated.splice(index, 1);
+		setNewBookings(updated);
+	};
+
+	const handleUpdateBookingRow = (
+		index: number,
+		field: string,
+		value: string,
+	) => {
+		const updated = [...newBookings];
+		updated[index] = { ...updated[index], [field]: value };
+		setNewBookings(updated);
+	};
+
 	const handleCreateBooking = async () => {
-		if (!newBooking.userId || !newBooking.conciergeItemId) {
-			customToast.error("Please fill all required fields");
+		if (!selectedUserId) {
+			customToast.error("Please select a user");
 			return;
 		}
 
-		try {
-			// Find item name
-			const item = conciergeItems.find((i) => i.id === newBooking.conciergeItemId);
-			const itemName = item ? item.name : newBooking.conciergeItemId;
+		// Validate all rows
+		for (const booking of newBookings) {
+			if (!booking.conciergeItemId) {
+				customToast.error("Please select a concierge item for all rows");
+				return;
+			}
+		}
 
-			// Create Booking
-			await api.post("/bookings/pa-create", {
-				userId: newBooking.userId,
-				type: "CONCIERGE",
-				specialRequests:
-					`Concierge Item: ${itemName}. Notes: ${newBooking.notes}`.substring(
-						0,
-						950,
-					),
-			});
-			customToast.success("Booking created successfully");
+		try {
+			if (newBookings.length === 1) {
+				// Find item name
+				const item = conciergeItems.find(
+					(i) => i.id === newBookings[0].conciergeItemId,
+				);
+				const itemName = item ? item.name : newBookings[0].conciergeItemId;
+
+				// Create single booking using PA-specific endpoint
+				await api.post("/bookings/pa-create", {
+					userId: selectedUserId,
+					type: "CONCIERGE",
+					specialRequests:
+						`Concierge Item: ${itemName}. Notes: ${newBookings[0].notes}`.substring(
+							0,
+							950,
+						),
+				});
+				customToast.success("Booking created successfully");
+			} else {
+				// Create bulk bookings
+				const mappedBookings = newBookings.map((b) => {
+					const item = conciergeItems.find((i) => i.id === b.conciergeItemId);
+					const itemName = item ? item.name : b.conciergeItemId;
+					return {
+						type: "CONCIERGE",
+						specialRequests:
+							`Concierge Item: ${itemName}. Notes: ${b.notes}`.substring(0, 950),
+					};
+				});
+
+				await api.post("/bookings/pa-create-bulk", {
+					userId: selectedUserId,
+					bookings: mappedBookings,
+				});
+				customToast.success(`Successfully created ${newBookings.length} bookings`);
+			}
+
 			setCreateOpen(false);
 			getBookings({ type: "CONCIERGE" });
 			// Reset form
-			setNewBooking({
-				userId: "",
-				conciergeItemId: "",
-				notes: "",
-			});
+			setSelectedUserId("");
+			setNewBookings([{ conciergeItemId: "", notes: "" }]);
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		} catch (err: any) {
-			const msg = err.response?.data?.error?.message || "Failed to create booking";
+			const msg =
+				err.response?.data?.error?.message || "Failed to create booking(s)";
 			customToast.error(msg);
 		}
 	};
@@ -180,21 +230,19 @@ export function ConciergeBookings() {
 									Create Booking
 								</Button>
 							</DialogTrigger>
-							<DialogContent className="sm:max-w-[425px] bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
+							<DialogContent className="sm:max-w-[700px] max-w-[95vw] overflow-y-auto max-h-[90vh] bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
 								<DialogHeader>
-									<DialogTitle>Create New Booking</DialogTitle>
+									<DialogTitle>Create New Booking(s)</DialogTitle>
 									<DialogDescription>
-										Select user and property to create a booking.
+										Select user and add one or more concierge items to book for them.
 									</DialogDescription>
 								</DialogHeader>
 								<div className="grid gap-4 py-4">
 									<div className="grid gap-2">
-										<Label htmlFor="user">User</Label>
+										<Label htmlFor="user">Select User</Label>
 										<Select
-											value={newBooking.userId}
-											onValueChange={(val) =>
-												setNewBooking({ ...newBooking, userId: val })
-											}>
+											value={selectedUserId}
+											onValueChange={setSelectedUserId}>
 											<SelectTrigger className="bg-zinc-50 dark:bg-zinc-950">
 												<SelectValue placeholder="Select User" />
 											</SelectTrigger>
@@ -209,46 +257,77 @@ export function ConciergeBookings() {
 											</SelectContent>
 										</Select>
 									</div>
-									<div className="grid gap-2">
-										<Label htmlFor="conciergeItem">Concierge Item</Label>
-										<Select
-											value={newBooking.conciergeItemId}
-											onValueChange={(val) =>
-												setNewBooking({ ...newBooking, conciergeItemId: val })
-											}>
-											<SelectTrigger className="bg-zinc-50 dark:bg-zinc-950">
-												<SelectValue placeholder="Select Concierge Item" />
-											</SelectTrigger>
-											<SelectContent className="max-h-[200px]">
-												{conciergeItems.map((item) => (
-													<SelectItem
-														key={item.id}
-														value={item.id}>
-														{item.name} - {parseFloat(item.price).toLocaleString()}{" "}
-														{item.currency}
-													</SelectItem>
-												))}
-											</SelectContent>
-										</Select>
-									</div>
-									<div className="grid gap-2">
-										<Label htmlFor="notes">Additional Notes</Label>
-										<Input
-											id="notes"
-											placeholder="Optional requests..."
-											value={newBooking.notes}
-											onChange={(e) =>
-												setNewBooking({ ...newBooking, notes: e.target.value })
-											}
-											className="bg-zinc-50 dark:bg-zinc-950"
-										/>
+
+									<div className="space-y-4 border rounded-xl p-4 border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
+										<div className="flex items-center justify-between">
+											<Label className="text-base font-semibold">Bookings</Label>
+											<Button
+												variant="outline"
+												size="sm"
+												onClick={handleAddBookingRow}
+												className="h-8 border-violet-200 hover:bg-violet-50 text-violet-600 dark:border-violet-900 dark:hover:bg-violet-900/20">
+												<Plus className="size-3 mr-1" /> Add Another Item
+											</Button>
+										</div>
+
+										{newBookings.map((booking, index) => (
+											<div
+												key={index}
+												className="space-y-4 p-4 border rounded-lg bg-white dark:bg-zinc-950 relative">
+												{newBookings.length > 1 && (
+													<Button
+														variant="ghost"
+														size="icon"
+														className="absolute top-2 right-2 h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/50"
+														onClick={() => handleRemoveBookingRow(index)}>
+														<XCircle className="size-4" />
+													</Button>
+												)}
+
+												<div className="grid gap-2 pr-8">
+													<Label>Concierge Item {index + 1}</Label>
+													<Select
+														value={booking.conciergeItemId}
+														onValueChange={(val) =>
+															handleUpdateBookingRow(index, "conciergeItemId", val)
+														}>
+														<SelectTrigger className="bg-zinc-50 dark:bg-zinc-900">
+															<SelectValue placeholder="Select Concierge Item" />
+														</SelectTrigger>
+														<SelectContent className="max-h-[200px]">
+															{conciergeItems.map((item) => (
+																<SelectItem
+																	key={item.id}
+																	value={item.id}>
+																	{item.name} - {parseFloat(item.price).toLocaleString()}{" "}
+																	{item.currency}
+																</SelectItem>
+															))}
+														</SelectContent>
+													</Select>
+												</div>
+
+												<div className="grid gap-2">
+													<Label>Additional Notes (Optional)</Label>
+													<Input
+														placeholder="Optional requests for this item..."
+														value={booking.notes}
+														onChange={(e) =>
+															handleUpdateBookingRow(index, "notes", e.target.value)
+														}
+														className="bg-zinc-50 dark:bg-zinc-900"
+													/>
+												</div>
+											</div>
+										))}
 									</div>
 								</div>
-								<DialogFooter>
+								<DialogFooter className="sticky bottom-0 bg-white dark:bg-zinc-900 pt-4 mt-2 mb-[-10px] pb-4">
 									<Button
 										onClick={handleCreateBooking}
 										className="bg-violet-600 hover:bg-violet-700 text-white w-full">
-										Proceed to Payment & Book
+										Proceed to Payment & Book{" "}
+										{newBookings.length > 1 ? `(${newBookings.length} items)` : ""}
 									</Button>
 								</DialogFooter>
 							</DialogContent>
