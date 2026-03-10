@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { ShieldAlert, Send, AlertTriangle } from "lucide-react";
 import { customToast } from "./CustomToast";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -27,43 +27,34 @@ import {
 import { Badge } from "../components/ui/badge";
 import { ScrollArea } from "../components/ui/scroll-area";
 import { useTransfers } from "../hooks/useTransfers";
-import { CheckCircle2, XCircle, Clock } from "lucide-react";
+import { Clock, PlayCircle, Loader2 } from "lucide-react";
 
 export function TransferOverrideForm() {
 	const [showConfirm, setShowConfirm] = useState(false);
-	const { transfers, getTransfers, approveTransfer, rejectTransfer } =
-		useTransfers();
+	const [executingId, setExecutingId] = useState<string | null>(null);
+	const {
+		getPendingTransfers,
+		pendingTransfers,
+		pendingLoading,
+		executeEmergencyTransfer,
+	} = useTransfers();
 
 	useEffect(() => {
-		getTransfers();
-	}, [getTransfers]);
+		getPendingTransfers();
+	}, [getPendingTransfers]);
 
-	const pendingTransfers = useMemo(
-		() => transfers.filter((t) => t.status === "PENDING"),
-		[transfers],
-	);
-
-	const handleApprove = async (id: string) => {
+	const handleExecute = async (id: string) => {
+		setExecutingId(id);
 		try {
-			await approveTransfer(id);
-			customToast.success("Transfer approved successfully");
-			getTransfers();
+			await executeEmergencyTransfer(id);
+			customToast.success("Transfer executed successfully");
+			getPendingTransfers();
 		} catch (error: any) {
 			customToast.error(
-				error.response?.data?.message || "Failed to approve transfer",
+				error.response?.data?.message || "Failed to execute transfer",
 			);
-		}
-	};
-
-	const handleReject = async (id: string) => {
-		try {
-			await rejectTransfer(id);
-			customToast.success("Transfer rejected successfully");
-			getTransfers();
-		} catch (error: any) {
-			customToast.error(
-				error.response?.data?.message || "Failed to reject transfer",
-			);
+		} finally {
+			setExecutingId(null);
 		}
 	};
 
@@ -133,54 +124,69 @@ export function TransferOverrideForm() {
 							</div>
 						</div>
 
-						{/* Pending Transfers Section */}
-						{pendingTransfers.length > 0 && (
-							<div className="mb-6 lg:mb-8">
-								<h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-									<Clock className="size-5 text-orange-500" />
-									Pending Transfer Authorizations
-								</h3>
+						{/* Pending Emergency Transfers */}
+						<div className="mb-6 lg:mb-8">
+							<h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+								<Clock className="size-5 text-orange-500" />
+								Pending Emergency Transfers
+							</h3>
+							{pendingLoading ? (
+								<div className="flex items-center gap-2 text-sm text-zinc-500 py-4">
+									<Loader2 className="size-4 animate-spin" />
+									Loading pending transfers…
+								</div>
+							) : pendingTransfers.length === 0 ? (
+								<p className="text-sm text-zinc-500 py-4">
+									No pending emergency transfers.
+								</p>
+							) : (
 								<div className="space-y-3">
-									{pendingTransfers.map((transfer) => (
+									{pendingTransfers.map((t) => (
 										<div
-											key={transfer.id}
+											key={t.id}
 											className="p-4 rounded-xl border border-orange-200 dark:border-orange-900 bg-orange-50/50 dark:bg-orange-950/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-											<div>
-												<div className="flex items-center gap-2 mb-1">
+											<div className="min-w-0 flex-1">
+												<div className="flex items-center gap-2 mb-1 flex-wrap">
 													<Badge className="bg-orange-100 text-orange-700 hover:bg-orange-100 border-none">
-														{transfer.currency} {parseFloat(transfer.amount).toLocaleString()}
+														{t.currency} {parseFloat(t.amount).toLocaleString()}
 													</Badge>
 													<span className="text-xs text-zinc-500 uppercase tracking-wider font-semibold">
-														Ref: {transfer.reference}
+														Ref: {t.reference}
+													</span>
+													<span className="text-xs text-zinc-600 dark:text-zinc-400">
+														User: {t.userUniqueId}
 													</span>
 												</div>
 												<p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-													{transfer.narration || "No narration provided"}
+													{t.narration || "Emergency transfer"}
 												</p>
 												<p className="text-xs text-zinc-500 mt-1">
-													Requested: {new Date(transfer.createdAt).toLocaleString()}
+													{t.recipientName} · {t.recipientBankName} {t.recipientAccountNumber}
+												</p>
+												<p className="text-xs text-zinc-500 mt-0.5">
+													Requested: {new Date(t.createdAt).toLocaleString()}
+													{t.expiresAt
+														? ` · Expires: ${new Date(t.expiresAt).toLocaleString()}`
+														: ""}
 												</p>
 											</div>
-											<div className="flex gap-2 w-full sm:w-auto">
-												<Button
-													size="sm"
-													variant="outline"
-													onClick={() => handleReject(transfer.id)}
-													className="flex-1 sm:flex-none border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700">
-													<XCircle className="size-4 mr-1.5" /> Reject
-												</Button>
-												<Button
-													size="sm"
-													onClick={() => handleApprove(transfer.id)}
-													className="flex-1 sm:flex-none bg-green-600 hover:bg-green-700 text-white">
-													<CheckCircle2 className="size-4 mr-1.5" /> Authorize
-												</Button>
-											</div>
+											<Button
+												size="sm"
+												onClick={() => handleExecute(t.id)}
+												disabled={executingId === t.id}
+												className="shrink-0 bg-green-600 hover:bg-green-700 text-white">
+												{executingId === t.id ? (
+													<Loader2 className="size-4 mr-1.5 animate-spin" />
+												) : (
+													<PlayCircle className="size-4 mr-1.5" />
+												)}
+												Execute
+											</Button>
 										</div>
 									))}
 								</div>
-							</div>
-						)}
+							)}
+						</div>
 
 						<h3 className="text-lg font-bold mb-4">Manual Override Request</h3>
 						<form

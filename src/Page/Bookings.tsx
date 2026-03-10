@@ -57,7 +57,16 @@ import {
 } from "../components/ui/command";
 import { cn } from "../utils";
 
-type ListingItem = { id: string; name: string; pricePerNight?: number | string; currency?: string };
+type ListingItem = {
+	id: string;
+	name: string;
+	description?: string;
+	address?: string;
+	city?: string;
+	pricePerNight?: number | string;
+	currency?: string;
+	media?: { url: string }[];
+};
 
 function PropertySearchCommand({
 	listings,
@@ -69,6 +78,7 @@ function PropertySearchCommand({
 	onSelect: (id: string) => void;
 }) {
 	const [filter, setFilter] = useState("");
+	const [expandedId, setExpandedId] = useState<string | null>(null);
 	const filtered = useMemo(() => {
 		if (!filter.trim()) return listings;
 		const q = filter.toLowerCase();
@@ -76,27 +86,79 @@ function PropertySearchCommand({
 			(l) =>
 				l.name?.toLowerCase().includes(q) ||
 				String(l.pricePerNight ?? "").toLowerCase().includes(q) ||
-				String(l.currency ?? "").toLowerCase().includes(q),
+				String(l.currency ?? "").toLowerCase().includes(q) ||
+				l.city?.toLowerCase().includes(q),
 		);
 	}, [listings, filter]);
 	return (
 		<Command>
 			<CommandInput
-				placeholder="Search by name or price..."
+				placeholder="Search by name, price, or city..."
 				value={filter}
 				onValueChange={setFilter}
 			/>
 			<CommandList>
 				<CommandEmpty>No property found.</CommandEmpty>
 				<CommandGroup>
-					{filtered.map((l) => (
-						<CommandItem
-							key={l.id}
-							value={`${l.name} ${l.pricePerNight} ${l.currency}`}
-							onSelect={() => onSelect(l.id)}>
-							{l.name} — {l.pricePerNight} {l.currency}
-						</CommandItem>
-					))}
+					{filtered.map((l) => {
+						const imgUrl = l.media?.[0]?.url;
+						const isExpanded = expandedId === l.id;
+						return (
+							<div key={l.id} className="flex flex-col gap-0">
+								<CommandItem
+									value={`${l.name} ${l.pricePerNight} ${l.currency}`}
+									onSelect={() => onSelect(l.id)}
+									className="flex items-center gap-3 py-2">
+									{imgUrl ? (
+										<img
+											src={imgUrl}
+											alt=""
+											className="size-10 rounded object-cover shrink-0 bg-zinc-100"
+										/>
+									) : (
+										<div className="size-10 rounded bg-zinc-200 dark:bg-zinc-700 shrink-0 flex items-center justify-center text-zinc-500 text-xs">
+											No img
+										</div>
+									)}
+									<span className="flex-1 truncate">
+										{l.name} — {l.pricePerNight} {l.currency}
+									</span>
+									<Button
+										type="button"
+										variant="ghost"
+										size="sm"
+										className="h-7 shrink-0"
+										onClick={(e) => {
+											e.preventDefault();
+											e.stopPropagation();
+											setExpandedId(isExpanded ? null : l.id);
+										}}>
+										{isExpanded ? "Hide" : "Details"}
+									</Button>
+								</CommandItem>
+								{isExpanded && (
+									<div className="px-2 pb-2 pt-0 border-b border-zinc-100 dark:border-zinc-800 last:border-0">
+										{imgUrl && (
+											<img
+												src={imgUrl}
+												alt={l.name}
+												className="w-full max-h-32 rounded object-cover mb-2"
+											/>
+										)}
+										<p className="text-xs text-zinc-600 dark:text-zinc-400 line-clamp-3">
+											{l.description || "No description."}
+										</p>
+										{(l.address || l.city) && (
+											<p className="text-xs text-zinc-500 mt-1">
+												{l.address}
+												{l.city ? `, ${l.city}` : ""}
+											</p>
+										)}
+									</div>
+								)}
+							</div>
+						);
+					})}
 				</CommandGroup>
 			</CommandList>
 		</Command>

@@ -24,18 +24,12 @@ import {
 	XCircle,
 	Clock,
 	Search,
+	ChevronsUpDown,
 } from "lucide-react";
 import { Input } from "../components/ui/input";
 import { customToast } from "./CustomToast";
 import { useUsers } from "../hooks/useUsers";
 import { Label } from "../components/ui/label";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "../components/ui/select";
 import {
 	Dialog,
 	DialogContent,
@@ -47,6 +41,19 @@ import {
 } from "../components/ui/dialog";
 import { Plus } from "lucide-react";
 import api from "../services/api";
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "../components/ui/popover";
+import {
+	Command,
+	CommandEmpty,
+	CommandGroup,
+	CommandInput,
+	CommandItem,
+	CommandList,
+} from "../components/ui/command";
 
 export function ConciergeBookings() {
 	const { bookings, loading, getBookings, updateBookingStatus, confirmBooking } =
@@ -66,6 +73,11 @@ export function ConciergeBookings() {
 		},
 	]);
 	const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+	const [userSearchQuery, setUserSearchQuery] = useState("");
+	const [userPopoverOpen, setUserPopoverOpen] = useState(false);
+	const [conciergePopoverOpenByIndex, setConciergePopoverOpenByIndex] = useState<
+		Record<number, boolean>
+	>({});
 
 	useEffect(() => {
 		getBookings({ type: "CONCIERGE" });
@@ -84,6 +96,14 @@ export function ConciergeBookings() {
 		};
 		fetchConciergeItems();
 	}, [getBookings, getAssignedUsers]);
+
+	useEffect(() => {
+		if (!createOpen) return;
+		const t = setTimeout(() => {
+			getAssignedUsers({ search: userSearchQuery || undefined, limit: 50 });
+		}, 300);
+		return () => clearTimeout(t);
+	}, [createOpen, userSearchQuery, getAssignedUsers]);
 
 	const handleAddBookingRow = () => {
 		setNewBookings([...newBookings, { conciergeItemId: "", notes: "" }]);
@@ -239,23 +259,52 @@ export function ConciergeBookings() {
 								</DialogHeader>
 								<div className="grid gap-4 py-4">
 									<div className="grid gap-2">
-										<Label htmlFor="user">Select User</Label>
-										<Select
-											value={selectedUserId}
-											onValueChange={setSelectedUserId}>
-											<SelectTrigger className="bg-zinc-50 dark:bg-zinc-950">
-												<SelectValue placeholder="Select User" />
-											</SelectTrigger>
-											<SelectContent className="max-h-[200px]">
-												{users.map((u) => (
-													<SelectItem
-														key={u.uniqueId}
-														value={u.uniqueId}>
-														{u.name}
-													</SelectItem>
-												))}
-											</SelectContent>
-										</Select>
+										<Label>Select User</Label>
+										<Popover
+											open={userPopoverOpen}
+											onOpenChange={(open) => {
+												setUserPopoverOpen(open);
+												if (!open) setUserSearchQuery("");
+											}}>
+											<PopoverTrigger asChild>
+												<Button
+													variant="outline"
+													role="combobox"
+													aria-expanded={userPopoverOpen}
+													className="w-full justify-between bg-zinc-50 dark:bg-zinc-950">
+													{selectedUserId
+														? users.find((u) => u.uniqueId === selectedUserId)?.name ||
+															selectedUserId
+														: "Search by Unique ID or name..."}
+													<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+												</Button>
+											</PopoverTrigger>
+											<PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+												<Command>
+													<CommandInput
+														placeholder="Search by Unique ID or name..."
+														value={userSearchQuery}
+														onValueChange={setUserSearchQuery}
+													/>
+													<CommandList>
+														<CommandEmpty>No user found.</CommandEmpty>
+														<CommandGroup>
+															{users.map((u) => (
+																<CommandItem
+																	key={u.uniqueId}
+																	value={`${u.uniqueId} ${u.name}`}
+																	onSelect={() => {
+																		setSelectedUserId(u.uniqueId);
+																		setUserPopoverOpen(false);
+																	}}>
+																	{u.name} ({u.uniqueId})
+																</CommandItem>
+															))}
+														</CommandGroup>
+													</CommandList>
+												</Command>
+											</PopoverContent>
+										</Popover>
 									</div>
 
 									<div className="space-y-4 border rounded-xl p-4 border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
@@ -286,25 +335,58 @@ export function ConciergeBookings() {
 
 												<div className="grid gap-2 pr-8">
 													<Label>Concierge Item {index + 1}</Label>
-													<Select
-														value={booking.conciergeItemId}
-														onValueChange={(val) =>
-															handleUpdateBookingRow(index, "conciergeItemId", val)
+													<Popover
+														open={conciergePopoverOpenByIndex[index] ?? false}
+														onOpenChange={(open) =>
+															setConciergePopoverOpenByIndex((prev) => ({
+																...prev,
+																[index]: open,
+															}))
 														}>
-														<SelectTrigger className="bg-zinc-50 dark:bg-zinc-900">
-															<SelectValue placeholder="Select Concierge Item" />
-														</SelectTrigger>
-														<SelectContent className="max-h-[200px]">
-															{conciergeItems.map((item) => (
-																<SelectItem
-																	key={item.id}
-																	value={item.id}>
-																	{item.name} - {parseFloat(item.price).toLocaleString()}{" "}
-																	{item.currency}
-																</SelectItem>
-															))}
-														</SelectContent>
-													</Select>
+														<PopoverTrigger asChild>
+															<Button
+																variant="outline"
+																role="combobox"
+																className="w-full justify-between bg-zinc-50 dark:bg-zinc-900">
+																{booking.conciergeItemId
+																	? (() => {
+																			const item = conciergeItems.find(
+																				(i) => i.id === booking.conciergeItemId,
+																			);
+																			return item
+																				? `${item.name} — ${parseFloat(item.price).toLocaleString()} ${item.currency}`
+																				: booking.conciergeItemId;
+																		})()
+																	: "Search concierge type or item..."}
+																<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+															</Button>
+														</PopoverTrigger>
+														<PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+															<Command>
+																<CommandInput placeholder="Search by name or price..." />
+																<CommandList>
+																	<CommandEmpty>No item found.</CommandEmpty>
+																	<CommandGroup>
+																		{conciergeItems.map((item) => (
+																			<CommandItem
+																				key={item.id}
+																				value={`${item.name} ${item.price} ${item.currency}`}
+																				onSelect={() => {
+																					handleUpdateBookingRow(index, "conciergeItemId", item.id);
+																					setConciergePopoverOpenByIndex((prev) => ({
+																						...prev,
+																						[index]: false,
+																					}));
+																				}}>
+																				{item.name} — {parseFloat(item.price).toLocaleString()}{" "}
+																				{item.currency}
+																			</CommandItem>
+																		))}
+																	</CommandGroup>
+																</CommandList>
+															</Command>
+														</PopoverContent>
+													</Popover>
 												</div>
 
 												<div className="grid gap-2">
