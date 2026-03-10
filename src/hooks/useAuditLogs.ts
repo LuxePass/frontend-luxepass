@@ -5,15 +5,17 @@ import { customToast } from "../Page/CustomToast";
 
 export interface AuditLog {
 	id: string;
+	actorType: string;
+	actorId?: string;
+	actorDisplayName?: string;
 	action: string;
-	entityType: string;
-	entityId: string;
-	userId: string;
-	userName: string;
-	previousData: unknown;
-	newData: unknown;
-	ipAddress: string;
-	userAgent: string;
+	resourceType: string;
+	resourceId?: string;
+	oldValue?: Record<string, unknown>;
+	newValue?: Record<string, unknown>;
+	metadata?: Record<string, unknown>;
+	ipAddress?: string;
+	userAgent?: string;
 	createdAt: string;
 }
 

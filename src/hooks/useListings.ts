@@ -161,14 +161,26 @@ export function useListings() {
 	const addMedia = useCallback(async (listingId: string, file: File) => {
 		const formData = new FormData();
 		formData.append("file", file);
-		const response = await api.post(`/listings/${listingId}/media`, formData, {
-			headers: { "Content-Type": "multipart/form-data" },
-		});
+		const response = await api.post(
+			`/listings/${listingId}/media/upload`,
+			formData,
+			{ headers: { "Content-Type": "multipart/form-data" } }
+		);
 		return response.data?.data;
 	}, []);
 
 	const deleteMedia = useCallback(async (listingId: string, mediaId: string) => {
 		await api.delete(`/listings/${listingId}/media/${mediaId}`);
+	}, []);
+
+	const uploadImage = useCallback(async (file: File): Promise<string | null> => {
+		const formData = new FormData();
+		formData.append("file", file);
+		const response = await api.post("/listings/upload", formData, {
+			headers: { "Content-Type": "multipart/form-data" },
+		});
+		const url = response.data?.data?.url;
+		return url ?? null;
 	}, []);
 
 	return {
@@ -184,6 +196,7 @@ export function useListings() {
 		getMedia,
 		addMedia,
 		deleteMedia,
+		uploadImage,
 		updateLocalListing,
 		addLocalListing,
 		removeLocalListing,

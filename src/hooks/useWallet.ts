@@ -92,20 +92,6 @@ export function useWallet() {
 		[requestTransactions],
 	);
 
-	const initiateTransfer = useCallback(
-		async (transferData: {
-			amount: string | number;
-			narration?: string;
-			securityAnswer?: string;
-			userIdentifier?: string;
-			destinationAccount?: DestinationAccount;
-		}) => {
-			const response = await api.post("/transfers/pa-withdraw", transferData);
-			return response.data?.data;
-		},
-		[],
-	);
-
 	const fetchSavedBankAccounts = useCallback(async (identifier: string) => {
 		const WHATSAPP_API_URL =
 			import.meta.env.VITE_WHATSAPP_BACKEND_URL ||
@@ -135,7 +121,6 @@ export function useWallet() {
 		getWalletById,
 		getAllWallets,
 		getTransferHistory,
-		initiateTransfer,
 		getUserWallet,
 		fetchSavedBankAccounts,
 	};

@@ -26,16 +26,6 @@ import {
 	Wallet as WalletIcon,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from "../components/ui/dialog";
-import { Label } from "../components/ui/label";
-import { Input } from "../components/ui/input";
 
 interface ClientDetailsProps {
 	clientId: string;
@@ -48,66 +38,6 @@ export function ClientDetails({ clientId, onClose }: ClientDetailsProps) {
 	const { getBookings } = useBookings();
 	const [client, setClient] = useState<ApiUser | null>(null);
 	const [clientBookings, setClientBookings] = useState<Booking[]>([]);
-
-	// Withdraw State
-	const [showWithdrawDialog, setShowWithdrawDialog] = useState(false);
-	const [withdrawAmount, setWithdrawAmount] = useState("");
-	const [withdrawNarration, setWithdrawNarration] = useState("");
-	const [withdrawLoading, setWithdrawLoading] = useState(false);
-	const [whatsappAccounts, setWhatsappAccounts] = useState<any[]>([]);
-	const [selectedAccountId, setSelectedAccountId] = useState<string>("");
-
-	const { initiateTransfer } = useWallet();
-
-	const fetchWhatsappAccounts = async () => {
-		try {
-			const identifier = client?.phone || clientId;
-			const baseUrl =
-				import.meta.env.VITE_WHATSAPP_BACKEND_URL || "http://localhost:3500/api";
-			const response = await fetch(`${baseUrl}/users/${identifier}/bank-accounts`);
-			const result = await response.json();
-			if (result.success) {
-				setWhatsappAccounts(result.data || []);
-			}
-		} catch (error) {
-			// console.error("Failed to fetch WhatsApp accounts", error);
-		}
-	};
-
-	const handleWithdraw = async () => {
-		if (!withdrawAmount) {
-			toast.error("Please enter amount");
-			return;
-		}
-
-		let finalNarration = withdrawNarration;
-		if (selectedAccountId !== "") {
-			const acc = whatsappAccounts[parseInt(selectedAccountId)];
-			if (acc) {
-				finalNarration = `${withdrawNarration} (To: ${acc.bankName} - ${acc.accountNumber})`;
-			}
-		}
-
-		setWithdrawLoading(true);
-		try {
-			await initiateTransfer({
-				amount: withdrawAmount,
-				narration: finalNarration,
-				userIdentifier: client?.uniqueId || clientId,
-			});
-
-			toast.success("Withdrawal initiated successfully");
-			setShowWithdrawDialog(false);
-			setWithdrawAmount("");
-			setWithdrawNarration("");
-			setSelectedAccountId("");
-		} catch (error) {
-			// console.error("Withdrawal failed", error);
-			toast.error("Failed to process withdrawal");
-		} finally {
-			setWithdrawLoading(false);
-		}
-	};
 
 	useEffect(() => {
 		const fetchData = async () => {
@@ -128,8 +58,7 @@ export function ClientDetails({ clientId, onClose }: ClientDetailsProps) {
 		};
 
 		fetchData();
-		fetchWhatsappAccounts();
-	}, [clientId, getUserById, getBookings, client?.phone]);
+	}, [clientId, getUserById, getBookings]);
 
 	const stats = useMemo(() => {
 		const totalRequests = clientBookings.length;
@@ -242,97 +171,10 @@ export function ClientDetails({ clientId, onClose }: ClientDetailsProps) {
 									<WalletIcon className="size-4" />
 									View Wallet
 								</Button>
-								<Button
-									size="sm"
-									variant="default" // or destructive/warning if funds specific
-									className="gap-2 bg-red-600 hover:bg-red-700 text-white ml-2"
-									onClick={() => setShowWithdrawDialog(true)}>
-									<TrendingUp className="size-4 rotate-180" />{" "}
-									{/* Down trend for withdrawal */}
-									Withdraw Funds
-								</Button>
 							</div>
 						</div>
 					</div>
 				</Card>
-
-				{/* Withdraw Dialog */}
-				<Dialog
-					open={showWithdrawDialog}
-					onOpenChange={setShowWithdrawDialog}>
-					<DialogContent className="sm:max-w-[425px]">
-						<DialogHeader>
-							<DialogTitle>Withdraw Funds</DialogTitle>
-							<DialogDescription>
-								Initiate a withdrawal from the client's wallet to their bank account.
-							</DialogDescription>
-						</DialogHeader>
-						<div className="grid gap-4 py-4">
-							<div className="grid grid-cols-4 items-center gap-4">
-								<Label
-									htmlFor="amount"
-									className="text-right">
-									Amount
-								</Label>
-								<Input
-									id="amount"
-									type="number"
-									value={withdrawAmount}
-									onChange={(e) => setWithdrawAmount(e.target.value)}
-									className="col-span-3"
-									placeholder="0.00"
-								/>
-							</div>
-							<div className="grid grid-cols-4 items-center gap-4">
-								<Label
-									htmlFor="account"
-									className="text-right">
-									Pay To
-								</Label>
-								<select
-									id="account"
-									value={selectedAccountId}
-									onChange={(e) => setSelectedAccountId(e.target.value)}
-									className="col-span-3 flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50">
-									<option value="">Manual Entry / Other</option>
-									{whatsappAccounts.map((acc, index) => (
-										<option
-											key={index}
-											value={index.toString()}>
-											{acc.bankName} - {acc.accountNumber}
-										</option>
-									))}
-								</select>
-							</div>
-							<div className="grid grid-cols-4 items-center gap-4">
-								<Label
-									htmlFor="narration"
-									className="text-right">
-									Narration
-								</Label>
-								<Input
-									id="narration"
-									value={withdrawNarration}
-									onChange={(e) => setWithdrawNarration(e.target.value)}
-									className="col-span-3"
-									placeholder="Reason for withdrawal"
-								/>
-							</div>
-						</div>
-						<DialogFooter>
-							<Button
-								variant="outline"
-								onClick={() => setShowWithdrawDialog(false)}>
-								Cancel
-							</Button>
-							<Button
-								onClick={handleWithdraw}
-								disabled={withdrawLoading}>
-								{withdrawLoading ? "Processing..." : "Confirm Withdrawal"}
-							</Button>
-						</DialogFooter>
-					</DialogContent>
-				</Dialog>
 
 				{/* Key Metrics */}
 				<div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">

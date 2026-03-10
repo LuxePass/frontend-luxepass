@@ -75,10 +75,13 @@ export function ListingManagement() {
 		getMedia,
 		addMedia,
 		deleteMedia,
+		uploadImage,
 		updateLocalListing,
 		addLocalListing,
 		removeLocalListing,
 	} = useListings();
+	const [createMediaUrls, setCreateMediaUrls] = useState<string[]>([]);
+	const [createUploading, setCreateUploading] = useState(false);
 	const [searchQuery, setSearchQuery] = useState("");
 	const [statusFilter, setStatusFilter] = useState<string>("all");
 	const [vetFilter, setVetFilter] = useState<string>("all");
@@ -144,7 +147,7 @@ export function ListingManagement() {
 		name: "",
 		description: "",
 		pricePerNight: "",
-		currency: "USD",
+		currency: "NGN",
 		address: "",
 		city: "",
 		state: "",
@@ -160,17 +163,28 @@ export function ListingManagement() {
 		e.preventDefault();
 		setCreating(true);
 		try {
-			const createdListing = await createListing(newListing);
+			const payload: Partial<PropertyListing> & { media?: { type: string; url: string; order: number }[] } = {
+				...newListing,
+			};
+			if (createMediaUrls.length > 0) {
+				payload.media = createMediaUrls.map((url, i) => ({
+					type: "IMAGE",
+					url,
+					order: i,
+				}));
+			}
+			const createdListing = await createListing(payload);
 			if (createdListing) {
 				addLocalListing(createdListing);
 			}
 			customToast.success("Listing created successfully");
 			setCreateDialogOpen(false);
+			setCreateMediaUrls([]);
 			setNewListing({
 				name: "",
 				description: "",
 				pricePerNight: "",
-				currency: "USD",
+				currency: "NGN",
 				address: "",
 				city: "",
 				state: "",
@@ -181,11 +195,26 @@ export function ListingManagement() {
 				maxGuests: 2,
 				amenities: ["Wifi"],
 			});
-			// getListings(); // Background refresh if needed, but UI is updated
 		} catch (err) {
 			customToast.error("Failed to create listing");
 		} finally {
 			setCreating(false);
+		}
+	};
+
+	const handleCreateImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+		const file = e.target.files?.[0];
+		if (!file || !uploadImage) return;
+		setCreateUploading(true);
+		try {
+			const url = await uploadImage(file);
+			if (url) setCreateMediaUrls((prev) => [...prev, url]);
+			else customToast.error("Upload failed");
+		} catch {
+			customToast.error("Upload failed");
+		} finally {
+			setCreateUploading(false);
+			e.target.value = "";
 		}
 	};
 
@@ -305,7 +334,10 @@ export function ListingManagement() {
 						<div className="flex gap-2 w-full sm:w-auto">
 							<Dialog
 								open={createDialogOpen}
-								onOpenChange={setCreateDialogOpen}>
+								onOpenChange={(open) => {
+									setCreateDialogOpen(open);
+									if (!open) setCreateMediaUrls([]);
+								}}>
 								<DialogTrigger asChild>
 									<Button className="bg-violet-600 hover:bg-violet-700 flex-1 sm:flex-none">
 										<Plus className="size-4 mr-2" />
@@ -478,6 +510,36 @@ export function ListingManagement() {
 													}
 													className="bg-zinc-50 dark:bg-zinc-950"
 												/>
+											</div>
+											<div className="grid gap-2">
+												<Label>Listing Images (optional)</Label>
+												<div className="flex flex-wrap items-center gap-2">
+													<label className="cursor-pointer">
+														<input
+															type="file"
+															accept="image/*"
+															className="hidden"
+															disabled={createUploading}
+															onChange={handleCreateImageUpload}
+														/>
+														<Button
+															type="button"
+															variant="outline"
+															size="sm"
+															className="border-zinc-300 dark:border-zinc-700"
+															asChild>
+															<span>
+																<Upload className="size-4 mr-2 inline" />
+																{createUploading ? "Uploading…" : "Upload image"}
+															</span>
+														</Button>
+													</label>
+													{createMediaUrls.length > 0 && (
+														<span className="text-sm text-zinc-500 dark:text-zinc-400">
+															{createMediaUrls.length} image(s) added
+														</span>
+													)}
+												</div>
 											</div>
 											<div className="grid gap-2">
 												<Label htmlFor="desc">Description</Label>

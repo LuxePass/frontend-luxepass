@@ -31,7 +31,6 @@ import {
 	Wallet as WalletIcon,
 	ArrowDownLeft,
 	TrendingUp,
-	Send,
 	Download,
 	RefreshCw,
 	Eye,
@@ -45,6 +44,8 @@ import { customToast } from "./CustomToast";
 // Interface for props if needed
 
 import { useParams } from "react-router-dom";
+import { useTransfers } from "../hooks/useTransfers";
+import { ArrowRightLeft, Loader2 } from "lucide-react";
 
 export function Wallet() {
 	const { userId } = useParams();
@@ -54,33 +55,29 @@ export function Wallet() {
 		getUserWallet,
 		fetchSavedBankAccounts,
 		savedBankAccounts,
-		initiateTransfer,
 		loading,
 	} = useWallet();
+	const {
+		pendingTransfers,
+		pendingLoading,
+		getPendingTransfers,
+		executeEmergencyTransfer,
+	} = useTransfers();
+	const [executingId, setExecutingId] = useState<string | null>(null);
 	const [balanceVisible, setBalanceVisible] = useState(true);
 	const [activeTab, setActiveTab] = useState("overview");
-	const [withdrawDialogOpen, setWithdrawDialogOpen] = useState(false);
 	const [addMethodDialogOpen, setAddMethodDialogOpen] = useState(false);
-	const [amount, setAmount] = useState("");
-	const [narration, setNarration] = useState("");
-	const [securityAnswer, setSecurityAnswer] = useState("");
-	const [withdrawing, setWithdrawing] = useState(false);
-	const [selectedAccountId, setSelectedAccountId] = useState("primary");
-
-	// Manual account state
-	const [manualBankName, setManualBankName] = useState("");
-	const [manualAccountNumber, setManualAccountNumber] = useState("");
-	const [manualAccountName, setManualAccountName] = useState("");
+	const [refreshLoading, setRefreshLoading] = useState(false);
 
 	useEffect(() => {
 		if (userId) {
 			getUserWallet(userId);
-			// Also fetch saved accounts from WhatsApp backend
 			fetchSavedBankAccounts(userId);
 		} else {
 			getMyWallet();
+			getPendingTransfers();
 		}
-	}, [getMyWallet, getUserWallet, fetchSavedBankAccounts, userId]);
+	}, [getMyWallet, getUserWallet, fetchSavedBankAccounts, getPendingTransfers, userId]);
 
 	const totalBalance = parseFloat(wallet?.balance || "0");
 
@@ -93,69 +90,6 @@ export function Wallet() {
 		}).format(num || 0);
 	};
 
-	const handleWithdraw = async () => {
-		if (!amount || parseFloat(amount) <= 0) {
-			customToast.error("Please enter a valid amount");
-			return;
-		}
-		if (!securityAnswer) {
-			customToast.error("Security answer is required");
-			return;
-		}
-
-		if (selectedAccountId === "manual") {
-			if (!manualBankName || !manualAccountNumber || !manualAccountName) {
-				customToast.error("Please fill all manual account details");
-				return;
-			}
-		}
-
-		setWithdrawing(true);
-		try {
-			const destinationAccount =
-				selectedAccountId === "manual" ?
-					{
-						bankName: manualBankName,
-						accountNumber: manualAccountNumber,
-						accountName: manualAccountName,
-					}
-				: selectedAccountId !== "primary" ?
-					savedBankAccounts.find((a) => a.accountNumber === selectedAccountId)
-				:	undefined;
-
-			await initiateTransfer({
-				amount: parseFloat(amount),
-				narration,
-				securityAnswer,
-				userIdentifier: userId || wallet?.userId,
-				destinationAccount,
-			});
-			customToast.success({
-				title: "Withdrawal Initiated",
-				description: "Your withdrawal request is being processed",
-			});
-			setWithdrawDialogOpen(false);
-			setAmount("");
-			setNarration("");
-			setSecurityAnswer("");
-			setManualBankName("");
-			setManualAccountNumber("");
-			setManualAccountName("");
-			setSelectedAccountId("primary");
-			if (userId) {
-				await getUserWallet(userId);
-			} else {
-				await getMyWallet();
-			}
-		} catch (err: any) {
-			const msg =
-				err.response?.data?.error?.message || "Failed to initiate transfer";
-			customToast.error(msg);
-		} finally {
-			setWithdrawing(false);
-		}
-	};
-
 	const handleAddPaymentMethod = () => {
 		customToast.success({
 			title: "Payment Method Added",
@@ -165,12 +99,13 @@ export function Wallet() {
 	};
 
 	const handleRefresh = async () => {
-		setWithdrawing(true);
+		setRefreshLoading(true);
 		try {
 			if (userId) {
 				await getUserWallet(userId);
 			} else {
 				await getMyWallet();
+				await getPendingTransfers();
 			}
 			customToast.success({
 				title: "Wallet Refreshed",
@@ -180,7 +115,24 @@ export function Wallet() {
 			const msg = err.response?.data?.error?.message || "Failed to refresh wallet";
 			customToast.error(msg);
 		} finally {
-			setWithdrawing(false);
+			setRefreshLoading(false);
+		}
+	};
+
+	const handleExecuteTransfer = async (id: string) => {
+		setExecutingId(id);
+		try {
+			await executeEmergencyTransfer(id);
+			customToast.success({
+				title: "Transfer executed",
+				description: "Emergency transfer was processed successfully",
+			});
+			await getPendingTransfers();
+		} catch (err: any) {
+			const msg = err.response?.data?.error?.message || "Failed to execute transfer";
+			customToast.error(msg);
+		} finally {
+			setExecutingId(null);
 		}
 	};
 
@@ -279,146 +231,6 @@ export function Wallet() {
 
 				{/* Quick Actions */}
 				<div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-8">
-					<Dialog
-						open={withdrawDialogOpen}
-						onOpenChange={setWithdrawDialogOpen}>
-						<DialogTrigger asChild>
-							<Button className="h-12 gap-2 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 shadow-lg shadow-zinc-500/10 rounded-xl transition-all hover:scale-[1.02] active:scale-95">
-								<Send className="size-4" />
-								<span className="font-semibold">Withdraw</span>
-							</Button>
-						</DialogTrigger>
-						<DialogContent className="font-sans border-none shadow-2xl rounded-3xl p-6 bg-white dark:bg-zinc-900">
-							<DialogHeader className="mb-6">
-								<DialogTitle className="text-2xl font-black tracking-tight">
-									Withdraw Funds
-								</DialogTitle>
-								<DialogDescription className="text-zinc-500">
-									Premium transfer to your verified account
-								</DialogDescription>
-							</DialogHeader>
-							<div className="space-y-4">
-								<div className="space-y-2">
-									<Label
-										htmlFor="amount"
-										className="text-xs font-bold uppercase tracking-widest text-zinc-400">
-										Amount (NGN)
-									</Label>
-									<Input
-										id="amount"
-										type="number"
-										value={amount}
-										onChange={(e) => setAmount(e.target.value)}
-										placeholder="0.00"
-										className="h-14 text-xl font-bold bg-zinc-50 dark:bg-zinc-800 border-none focus-visible:ring-2 focus-visible:ring-violet-500 rounded-2xl"
-									/>
-								</div>
-								<div className="space-y-2">
-									<Label
-										htmlFor="narration"
-										className="text-xs font-bold uppercase tracking-widest text-zinc-400">
-										Narration (Optional)
-									</Label>
-									<Input
-										id="narration"
-										value={narration}
-										onChange={(e) => setNarration(e.target.value)}
-										placeholder="What's this for?"
-										className="h-12 bg-zinc-50 dark:bg-zinc-800 border-none focus-visible:ring-2 focus-visible:ring-violet-500 rounded-xl"
-									/>
-								</div>
-								<div className="space-y-2">
-									<Label
-										htmlFor="securityAnswer"
-										className="text-xs font-bold uppercase tracking-widest text-zinc-400">
-										Security Secret Answer
-									</Label>
-									<Input
-										id="securityAnswer"
-										type="password"
-										value={securityAnswer}
-										onChange={(e) => setSecurityAnswer(e.target.value)}
-										placeholder="Your secret answer"
-										className="h-12 bg-zinc-50 dark:bg-zinc-800 border-none focus-visible:ring-2 focus-visible:ring-violet-500 rounded-xl font-mono"
-									/>
-								</div>
-
-								<div className="space-y-2">
-									<Label
-										htmlFor="account"
-										className="text-xs font-bold uppercase tracking-widest text-zinc-400">
-										Destination Account
-									</Label>
-									<Select
-										value={selectedAccountId}
-										onValueChange={setSelectedAccountId}>
-										<SelectTrigger
-											id="account"
-											className="h-14 bg-zinc-50 dark:bg-zinc-800 border-none focus-visible:ring-2 focus-visible:ring-violet-500 rounded-2xl">
-											<SelectValue placeholder="Select account" />
-										</SelectTrigger>
-										<SelectContent className="font-sans rounded-2xl border-none shadow-xl">
-											<SelectItem value="primary">
-												{wallet?.virtualAccounts?.[0]?.bankName || "Primary Account"} (••
-												{wallet?.virtualAccounts?.[0]?.accountNumber?.slice(-4) || "••••"})
-											</SelectItem>
-											{savedBankAccounts.map((account, idx) => (
-												<SelectItem
-													key={`${account.accountNumber}-${idx}`}
-													value={`${account.accountNumber}`}>
-													{account.bankName} (••
-													{account.accountNumber?.slice(-4)}) - {account.accountName}
-												</SelectItem>
-											))}
-											<SelectItem
-												value="manual"
-												className="text-violet-600 font-semibold cursor-pointer">
-												+ Add Account Manually
-											</SelectItem>
-										</SelectContent>
-									</Select>
-								</div>
-
-								{selectedAccountId === "manual" && (
-									<div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl space-y-3 border border-zinc-100 dark:border-zinc-800">
-										<Label className="text-xs font-bold uppercase tracking-widest text-zinc-500">
-											Manual Account Details
-										</Label>
-										<Input
-											placeholder="Bank Name (e.g., Zenith Bank)"
-											className="h-12 bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 rounded-xl"
-											id="manual-bank-name"
-											value={manualBankName}
-											onChange={(e) => setManualBankName(e.target.value)}
-										/>
-										<Input
-											placeholder="Account Number"
-											type="text"
-											className="h-12 bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 rounded-xl"
-											id="manual-account-number"
-											value={manualAccountNumber}
-											onChange={(e) => setManualAccountNumber(e.target.value)}
-										/>
-										<Input
-											placeholder="Account Name"
-											className="h-12 bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 rounded-xl"
-											id="manual-account-name"
-											value={manualAccountName}
-											onChange={(e) => setManualAccountName(e.target.value)}
-										/>
-									</div>
-								)}
-
-								<Button
-									onClick={handleWithdraw}
-									disabled={withdrawing}
-									className="w-full h-14 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white font-bold rounded-2xl shadow-xl shadow-violet-500/20 transition-all hover:scale-[1.02] active:scale-95">
-									{withdrawing ? "Processing..." : "Initiate Transfer"}
-								</Button>
-							</div>
-						</DialogContent>
-					</Dialog>
-
 					<Button
 						variant="outline"
 						className="h-12 gap-2 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-xl transition-all hover:scale-[1.02] active:scale-95 font-semibold">
@@ -430,7 +242,7 @@ export function Wallet() {
 						variant="outline"
 						className="h-12 gap-2 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-xl transition-all hover:scale-[1.02] active:scale-95 font-semibold"
 						onClick={handleRefresh}>
-						<RefreshCw className={cn("size-4", loading && "animate-spin")} />
+						<RefreshCw className={cn("size-4", (loading || refreshLoading) && "animate-spin")} />
 						Refresh
 					</Button>
 
@@ -527,6 +339,18 @@ export function Wallet() {
 							className="data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-900 data-[state=active]:text-violet-600 dark:data-[state=active]:text-violet-400 rounded-xl px-6 h-10 transition-all font-semibold">
 							Transactions
 						</TabsTrigger>
+						{!userId && (
+							<TabsTrigger
+								value="pending"
+								className="data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-900 data-[state=active]:text-violet-600 dark:data-[state=active]:text-violet-400 rounded-xl px-6 h-10 transition-all font-semibold">
+								Pending Transfers
+								{pendingTransfers.length > 0 && (
+									<Badge className="ml-1.5 bg-violet-500 text-white border-0">
+										{pendingTransfers.length}
+									</Badge>
+								)}
+							</TabsTrigger>
+						)}
 					</TabsList>
 
 					<TabsContent
@@ -581,6 +405,71 @@ export function Wallet() {
 							</Card>
 						</div>
 					</TabsContent>
+
+					{!userId && (
+						<TabsContent
+							value="pending"
+							className="flex-1 overflow-y-auto data-[state=inactive]:hidden px-1">
+							<div className="space-y-4 pb-8">
+								<p className="text-sm text-zinc-500 dark:text-zinc-400">
+									Emergency transfers requested by users. Execute within 1 hour of creation.
+								</p>
+								{pendingLoading ? (
+									<div className="flex items-center justify-center py-12">
+										<Loader2 className="size-8 animate-spin text-violet-600" />
+									</div>
+								) : pendingTransfers.length === 0 ? (
+									<Card className="p-16 text-center shadow-none border-dashed border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 rounded-3xl">
+										<ArrowRightLeft className="size-16 mx-auto mb-4 text-zinc-300 dark:text-zinc-700 opacity-50" />
+										<p className="text-zinc-500 dark:text-zinc-400 font-bold">No pending transfers</p>
+									</Card>
+								) : (
+									<div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
+										<table className="w-full text-left text-sm">
+											<thead className="bg-zinc-50 dark:bg-zinc-800/80">
+												<tr>
+													<th className="px-4 py-3 font-semibold">Amount</th>
+													<th className="px-4 py-3 font-semibold">User</th>
+													<th className="px-4 py-3 font-semibold">Destination</th>
+													<th className="px-4 py-3 font-semibold">Created</th>
+													<th className="px-4 py-3 font-semibold w-28">Action</th>
+												</tr>
+											</thead>
+											<tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+												{pendingTransfers.map((t) => (
+													<tr key={t.id} className="bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
+														<td className="px-4 py-3 font-medium">
+															{formatCurrency(t.amount)} {t.currency}
+														</td>
+														<td className="px-4 py-3">{t.userUniqueId || t.userId}</td>
+														<td className="px-4 py-3">
+															{t.recipientBankName} · ****{String(t.recipientAccountNumber).slice(-4)} · {t.recipientName}
+														</td>
+														<td className="px-4 py-3 text-zinc-500">
+															{new Date(t.createdAt).toLocaleString()}
+														</td>
+														<td className="px-4 py-3">
+															<Button
+																size="sm"
+																className="bg-violet-600 hover:bg-violet-700 text-white"
+																onClick={() => handleExecuteTransfer(t.id)}
+																disabled={executingId === t.id}>
+																{executingId === t.id ? (
+																	<Loader2 className="size-4 animate-spin" />
+																) : (
+																	"Execute"
+																)}
+															</Button>
+														</td>
+													</tr>
+												))}
+											</tbody>
+										</table>
+									</div>
+								)}
+							</div>
+						</TabsContent>
+					)}
 				</Tabs>
 			</div>
 		</div>

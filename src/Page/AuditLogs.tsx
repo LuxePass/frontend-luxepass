@@ -15,9 +15,9 @@ export function AuditLogs() {
 
 	const filteredLogs = logs.filter(
 		(log) =>
-			(log.userName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+			(log.actorDisplayName || log.actorId || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
 			(log.action || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-			(log.entityType || "").toLowerCase().includes(searchQuery.toLowerCase())
+			(log.resourceType || "").toLowerCase().includes(searchQuery.toLowerCase())
 	);
 
 	const getActionColor = (action: string) => {
@@ -59,9 +59,9 @@ export function AuditLogs() {
 						<thead className="text-xs uppercase bg-zinc-50 dark:bg-zinc-950 text-zinc-500 border-b border-zinc-200 dark:border-zinc-800">
 							<tr>
 								<th className="px-4 py-3 font-semibold">Timestamp</th>
-								<th className="px-4 py-3 font-semibold">User</th>
+								<th className="px-4 py-3 font-semibold">Actor</th>
 								<th className="px-4 py-3 font-semibold">Action</th>
-								<th className="px-4 py-3 font-semibold">Entity</th>
+								<th className="px-4 py-3 font-semibold">Target</th>
 								<th className="px-4 py-3 font-semibold">Details</th>
 							</tr>
 						</thead>
@@ -94,7 +94,9 @@ export function AuditLogs() {
 										<td className="px-4 py-4 whitespace-nowrap text-xs text-zinc-500">
 											{new Date(log.createdAt).toLocaleString()}
 										</td>
-										<td className="px-4 py-4 font-medium">{log.userName}</td>
+										<td className="px-4 py-4 font-medium">
+											{log.actorDisplayName || log.actorId || "—"}
+										</td>
 										<td className="px-4 py-4">
 											<Badge
 												className={getActionColor(log.action)}
@@ -104,14 +106,15 @@ export function AuditLogs() {
 										</td>
 										<td className="px-4 py-4">
 											<span className="text-xs font-mono bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded">
-												{log.entityType}
+												{log.resourceType}
+												{log.resourceId ? ` · ${log.resourceId}` : ""}
 											</span>
 										</td>
 										<td className="px-4 py-4 max-w-xs">
 											<p
 												className="truncate text-xs text-zinc-500"
-												title={JSON.stringify(log.newData)}>
-												{JSON.stringify(log.newData)}
+												title={log.newValue ? JSON.stringify(log.newValue) : undefined}>
+												{log.newValue ? JSON.stringify(log.newValue) : "—"}
 											</p>
 										</td>
 									</tr>

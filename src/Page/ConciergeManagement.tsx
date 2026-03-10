@@ -204,7 +204,6 @@ export function ConciergeManagement() {
 															<SelectItem value="TRANSPORT">Transport</SelectItem>
 															<SelectItem value="FLIGHT">Flight</SelectItem>
 															<SelectItem value="LIFESTYLE">Lifestyle</SelectItem>
-															<SelectItem value="EMERGENCY_FUNDS">Emergency Funds</SelectItem>
 															<SelectItem value="OTHER">Other</SelectItem>
 														</SelectContent>
 													</Select>
@@ -281,9 +280,6 @@ export function ConciergeManagement() {
 									</DropdownMenuItem>
 									<DropdownMenuItem onClick={() => setCategoryFilter("LIFESTYLE")}>
 										Lifestyle
-									</DropdownMenuItem>
-									<DropdownMenuItem onClick={() => setCategoryFilter("EMERGENCY_FUNDS")}>
-										Emergency Funds
 									</DropdownMenuItem>
 								</DropdownMenuContent>
 							</DropdownMenu>

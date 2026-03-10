@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useBookings, type Booking } from "../hooks/useBookings";
 import { Card } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
@@ -24,19 +24,13 @@ import {
 	XCircle,
 	Clock,
 	Search,
+	ChevronsUpDown,
 } from "lucide-react";
 import { Input } from "../components/ui/input";
 import { customToast } from "./CustomToast";
 import { useUsers } from "../hooks/useUsers";
 import { useListings } from "../hooks/useListings";
 import { Label } from "../components/ui/label";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "../components/ui/select";
 import {
 	Dialog,
 	DialogContent,
@@ -48,6 +42,66 @@ import {
 } from "../components/ui/dialog";
 import { Plus } from "lucide-react";
 import api from "../services/api";
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "../components/ui/popover";
+import {
+	Command,
+	CommandEmpty,
+	CommandGroup,
+	CommandInput,
+	CommandItem,
+	CommandList,
+} from "../components/ui/command";
+import { cn } from "../utils";
+
+type ListingItem = { id: string; name: string; pricePerNight?: number | string; currency?: string };
+
+function PropertySearchCommand({
+	listings,
+	value,
+	onSelect,
+}: {
+	listings: ListingItem[];
+	value: string;
+	onSelect: (id: string) => void;
+}) {
+	const [filter, setFilter] = useState("");
+	const filtered = useMemo(() => {
+		if (!filter.trim()) return listings;
+		const q = filter.toLowerCase();
+		return listings.filter(
+			(l) =>
+				l.name?.toLowerCase().includes(q) ||
+				String(l.pricePerNight ?? "").toLowerCase().includes(q) ||
+				String(l.currency ?? "").toLowerCase().includes(q),
+		);
+	}, [listings, filter]);
+	return (
+		<Command>
+			<CommandInput
+				placeholder="Search by name or price..."
+				value={filter}
+				onValueChange={setFilter}
+			/>
+			<CommandList>
+				<CommandEmpty>No property found.</CommandEmpty>
+				<CommandGroup>
+					{filtered.map((l) => (
+						<CommandItem
+							key={l.id}
+							value={`${l.name} ${l.pricePerNight} ${l.currency}`}
+							onSelect={() => onSelect(l.id)}>
+							{l.name} — {l.pricePerNight} {l.currency}
+						</CommandItem>
+					))}
+				</CommandGroup>
+			</CommandList>
+		</Command>
+	);
+}
 
 export function Bookings() {
 	const { bookings, loading, getBookings, updateBookingStatus, confirmBooking } =
@@ -67,12 +121,29 @@ export function Bookings() {
 		},
 	]);
 	const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+	const [userSearchQuery, setUserSearchQuery] = useState("");
+	const [userPopoverOpen, setUserPopoverOpen] = useState(false);
+	const [propertyPopoverOpenByIndex, setPropertyPopoverOpenByIndex] = useState<
+		Record<number, boolean>
+	>({});
+	const [otpExpiresAt, setOtpExpiresAt] = useState<string | null>(null);
+	const [otpCode, setOtpCode] = useState("");
+	const [otpRequesting, setOtpRequesting] = useState(false);
 
 	useEffect(() => {
 		getBookings();
 		getAssignedUsers();
 		getListings();
 	}, [getBookings, getAssignedUsers, getListings]);
+
+	// Debounced user search: when create dialog is open and user types, fetch users by search
+	useEffect(() => {
+		if (!createOpen) return;
+		const t = setTimeout(() => {
+			getAssignedUsers({ search: userSearchQuery || undefined, limit: 50 });
+		}, 300);
+		return () => clearTimeout(t);
+	}, [createOpen, userSearchQuery, getAssignedUsers]);
 
 	const handleAddBookingRow = () => {
 		setNewBookings([
@@ -97,9 +168,34 @@ export function Bookings() {
 		setNewBookings(updated);
 	};
 
+	const handleRequestOtp = async () => {
+		if (!selectedUserId) {
+			customToast.error("Please select a user first");
+			return;
+		}
+		setOtpRequesting(true);
+		try {
+			const res = await api.post("/pa-otp/request", {
+				userId: selectedUserId,
+				action: "BOOKING_CREATE",
+			});
+			const expiresAt = res.data?.data?.expiresAt ?? res.data?.expiresAt;
+			setOtpExpiresAt(expiresAt ?? null);
+			customToast.success("OTP sent to client via WhatsApp. Ask them for the code.");
+		} catch (err: any) {
+			customToast.error(err.response?.data?.error?.message || "Failed to send OTP");
+		} finally {
+			setOtpRequesting(false);
+		}
+	};
+
 	const handleCreateBooking = async () => {
 		if (!selectedUserId) {
 			customToast.error("Please select a user");
+			return;
+		}
+		if (!otpCode.trim()) {
+			customToast.error("Please request an OTP and enter the code from the client");
 			return;
 		}
 
@@ -116,6 +212,7 @@ export function Bookings() {
 				// Create single booking using PA-specific endpoint
 				await api.post("/bookings/pa-create", {
 					userId: selectedUserId,
+					otpCode: otpCode.trim(),
 					...newBookings[0],
 					type: "SHORTLET",
 					specialRequests: newBookings[0].notes.substring(0, 950),
@@ -133,6 +230,7 @@ export function Bookings() {
 
 				await api.post("/bookings/pa-create-bulk", {
 					userId: selectedUserId,
+					otpCode: otpCode.trim(),
 					bookings: mappedBookings,
 				});
 				customToast.success(`Successfully created ${newBookings.length} bookings`);
@@ -142,6 +240,8 @@ export function Bookings() {
 			getBookings();
 			// Reset form
 			setSelectedUserId("");
+			setOtpCode("");
+			setOtpExpiresAt(null);
 			setNewBookings([{ propertyId: "", checkIn: "", checkOut: "", notes: "" }]);
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		} catch (err: any) {
@@ -204,7 +304,13 @@ export function Bookings() {
 						<h3 className="font-bold">Bookings Management</h3>
 						<Dialog
 							open={createOpen}
-							onOpenChange={setCreateOpen}>
+							onOpenChange={(open) => {
+								setCreateOpen(open);
+								if (!open) {
+									setOtpCode("");
+									setOtpExpiresAt(null);
+								}
+							}}>
 							<DialogTrigger asChild>
 								<Button className="bg-violet-600 hover:bg-violet-700">
 									<Plus className="size-4 mr-2" />
@@ -220,23 +326,78 @@ export function Bookings() {
 								</DialogHeader>
 								<div className="grid gap-4 py-4">
 									<div className="grid gap-2">
-										<Label htmlFor="user">Select User</Label>
-										<Select
-											value={selectedUserId}
-											onValueChange={setSelectedUserId}>
-											<SelectTrigger className="bg-zinc-50 dark:bg-zinc-950">
-												<SelectValue placeholder="Select User" />
-											</SelectTrigger>
-											<SelectContent className="max-h-[200px]">
-												{users.map((u) => (
-													<SelectItem
-														key={u.uniqueId}
-														value={u.uniqueId}>
-														{u.name}
-													</SelectItem>
-												))}
-											</SelectContent>
-										</Select>
+										<Label>Select User</Label>
+										<Popover
+											open={userPopoverOpen}
+											onOpenChange={(open) => {
+												setUserPopoverOpen(open);
+												if (!open) setUserSearchQuery("");
+											}}>
+											<PopoverTrigger asChild>
+												<Button
+													variant="outline"
+													role="combobox"
+													aria-expanded={userPopoverOpen}
+													className="w-full justify-between bg-zinc-50 dark:bg-zinc-950">
+													{selectedUserId
+														? users.find((u) => u.uniqueId === selectedUserId)?.name ||
+															selectedUserId
+														: "Search by Unique ID or name..."}
+													<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+												</Button>
+											</PopoverTrigger>
+											<PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+												<Command>
+													<CommandInput
+														placeholder="Search by Unique ID or name..."
+														value={userSearchQuery}
+														onValueChange={setUserSearchQuery}
+													/>
+													<CommandList>
+														<CommandEmpty>No user found.</CommandEmpty>
+														<CommandGroup>
+															{users.map((u) => (
+																<CommandItem
+																	key={u.uniqueId}
+																	value={`${u.uniqueId} ${u.name}`}
+																	onSelect={() => {
+																		setSelectedUserId(u.uniqueId);
+																		setUserPopoverOpen(false);
+																	}}>
+																	{u.name} ({u.uniqueId})
+																</CommandItem>
+															))}
+														</CommandGroup>
+													</CommandList>
+												</Command>
+											</PopoverContent>
+										</Popover>
+									</div>
+
+									<div className="grid gap-2">
+										<Label>OTP (required)</Label>
+										<div className="flex gap-2">
+											<Button
+												type="button"
+												variant="outline"
+												onClick={handleRequestOtp}
+												disabled={!selectedUserId || otpRequesting}
+												className="shrink-0">
+												{otpRequesting ? "Sending…" : "Send OTP to client"}
+											</Button>
+											<Input
+												placeholder="Enter code from client"
+												value={otpCode}
+												onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+												className="max-w-[8rem] bg-zinc-50 dark:bg-zinc-950"
+												maxLength={6}
+											/>
+										</div>
+										{otpExpiresAt && (
+											<p className="text-xs text-zinc-500">
+												Code sent. Expires {new Date(otpExpiresAt).toLocaleTimeString()}.
+											</p>
+										)}
 									</div>
 
 									<div className="space-y-4 border rounded-xl p-4 border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
@@ -267,24 +428,41 @@ export function Bookings() {
 
 												<div className="grid gap-2 pr-8">
 													<Label>Property {index + 1}</Label>
-													<Select
-														value={booking.propertyId}
-														onValueChange={(val) =>
-															handleUpdateBookingRow(index, "propertyId", val)
+													<Popover
+														open={propertyPopoverOpenByIndex[index] ?? false}
+														onOpenChange={(open) =>
+															setPropertyPopoverOpenByIndex((prev) => ({
+																...prev,
+																[index]: open,
+															}))
 														}>
-														<SelectTrigger className="bg-zinc-50 dark:bg-zinc-900">
-															<SelectValue placeholder="Select Property" />
-														</SelectTrigger>
-														<SelectContent className="max-h-[200px]">
-															{listings.map((l) => (
-																<SelectItem
-																	key={l.id}
-																	value={l.id}>
-																	{l.name} - {l.pricePerNight} {l.currency}
-																</SelectItem>
-															))}
-														</SelectContent>
-													</Select>
+														<PopoverTrigger asChild>
+															<Button
+																variant="outline"
+																role="combobox"
+																className="w-full justify-between bg-zinc-50 dark:bg-zinc-900">
+																{booking.propertyId
+																	? (() => {
+																			const l = listings.find((x) => x.id === booking.propertyId);
+																			return l
+																				? `${l.name} — ${l.pricePerNight} ${l.currency}`
+																				: booking.propertyId;
+																		})()
+																	: "Search property by name or price..."}
+																<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+															</Button>
+														</PopoverTrigger>
+														<PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+															<PropertySearchCommand
+																listings={listings}
+																value={booking.propertyId}
+																onSelect={(id) => {
+																	handleUpdateBookingRow(index, "propertyId", id);
+																	setPropertyPopoverOpenByIndex((prev) => ({ ...prev, [index]: false }));
+																}}
+															/>
+														</PopoverContent>
+													</Popover>
 												</div>
 
 												<div className="grid grid-cols-2 gap-4">

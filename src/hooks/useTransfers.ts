@@ -13,6 +13,21 @@ export interface Transfer {
 	createdAt: string;
 }
 
+export interface PendingTransfer {
+	id: string;
+	reference: string;
+	userId: string;
+	userUniqueId: string;
+	amount: string;
+	currency: string;
+	recipientBankName: string;
+	recipientAccountNumber: string;
+	recipientName: string;
+	narration?: string;
+	createdAt: string;
+	expiresAt: string;
+}
+
 export function useTransfers() {
 	const { data, loading, error, request } = useApi<{
 		data: Transfer[];
@@ -49,6 +64,28 @@ export function useTransfers() {
 		return response.data?.data;
 	}, []);
 
+	const {
+		data: pendingData,
+		loading: pendingLoading,
+		request: requestPending,
+	} = useApi<PendingTransfer[]>();
+
+	const getPendingTransfers = useCallback(async () => {
+		try {
+			const res = await requestPending(api.get("/transfers/pending"));
+			return Array.isArray(res) ? res : [];
+		} catch (_err: unknown) {
+			const err = _err as { response?: { status?: number } };
+			if (err?.response?.status === 403) return [];
+			throw _err;
+		}
+	}, [requestPending]);
+
+	const executeEmergencyTransfer = useCallback(async (id: string) => {
+		const response = await api.post(`/transfers/${id}/execute`);
+		return response.data?.data;
+	}, []);
+
 	return {
 		transfers: data?.data || [],
 		meta: data?.meta,
@@ -57,5 +94,9 @@ export function useTransfers() {
 		getTransfers,
 		approveTransfer,
 		rejectTransfer,
+		pendingTransfers: pendingData ?? [],
+		pendingLoading,
+		getPendingTransfers,
+		executeEmergencyTransfer,
 	};
 }
