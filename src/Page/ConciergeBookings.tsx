@@ -282,7 +282,7 @@ export function ConciergeBookings() {
 				updateBookingInList(updated as Parameters<typeof updateBookingInList>[0]);
 			}
 			customToast.success(`Booking status updated to ${status}`);
-			await getBookings();
+			await getBookings({ type: "CONCIERGE" });
 		} catch {
 			customToast.error("Failed to update booking status");
 		}

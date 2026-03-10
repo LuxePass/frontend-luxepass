@@ -110,19 +110,26 @@ export function useBookings() {
 				status,
 				specialRequests,
 			});
-			return response.data?.data;
+			const raw = response.data?.data ?? response.data;
+			return (typeof raw === "object" && raw !== null && "id" in raw
+				? raw
+				: undefined) as Booking | undefined;
 		},
 		[],
 	);
 
 	const confirmBooking = useCallback(async (id: string) => {
 		const response = await api.patch(`/bookings/${id}/confirm`);
-		return response.data?.data as Booking | undefined;
+		const raw = response.data?.data ?? response.data;
+		return (typeof raw === "object" && raw !== null && "id" in raw
+			? raw
+			: undefined) as Booking | undefined;
 	}, []);
 
 	/** Update a single booking in the local list (e.g. after status change) so UI updates immediately */
 	const updateBookingInList = useCallback(
-		(updated: Booking) => {
+		(updated: Partial<Booking> & { id: string }) => {
+			if (!updated?.id) return;
 			setState((prev) => {
 				if (!prev?.data) return prev;
 				const current = prev.data as BookingsApiData | Booking[];
@@ -130,9 +137,14 @@ export function useBookings() {
 				const nextList = list.map((b) =>
 					b.id === updated.id ? { ...b, ...updated } : b,
 				);
-				const nextData: BookingsApiData = Array.isArray(current)
-					? { data: nextList, meta: { totalItems: nextList.length, page: 1, limit: nextList.length, hasMore: false, totalPages: 1 } }
-					: { ...(current as BookingsApiData), data: nextList };
+				const meta =
+					typeof current === "object" && current !== null && "meta" in current
+						? (current as BookingsApiData).meta
+						: { totalItems: nextList.length, page: 1, limit: nextList.length, hasMore: false, totalPages: 1 };
+				const nextData: BookingsApiData = {
+					data: nextList,
+					meta: meta ?? { totalItems: nextList.length, page: 1, limit: nextList.length, hasMore: false, totalPages: 1 },
+				};
 				return { ...prev, data: nextData };
 			});
 		},
