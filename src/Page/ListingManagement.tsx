@@ -73,6 +73,7 @@ export function ListingManagement() {
 		updateVettingStatus,
 		deleteListing,
 		getMedia,
+		uploadListingImage,
 		addMedia,
 		deleteMedia,
 		updateLocalListing,
@@ -144,7 +145,7 @@ export function ListingManagement() {
 		name: "",
 		description: "",
 		pricePerNight: "",
-		currency: "USD",
+		currency: "NGN",
 		address: "",
 		city: "",
 		state: "",
@@ -170,7 +171,7 @@ export function ListingManagement() {
 				name: "",
 				description: "",
 				pricePerNight: "",
-				currency: "USD",
+				currency: "NGN",
 				address: "",
 				city: "",
 				state: "",
@@ -208,7 +209,9 @@ export function ListingManagement() {
 		if (!selectedListing || !e.target.files?.[0]) return;
 		setUploading(true);
 		try {
-			await addMedia(selectedListing.id, e.target.files[0]);
+			const file = e.target.files[0];
+			const url = await uploadListingImage(file);
+			await addMedia(selectedListing.id, [{ type: "IMAGE", url }]);
 			const updatedMedia = await getMedia(selectedListing.id);
 			setListingImages(updatedMedia);
 			customToast.success("Image uploaded successfully");

@@ -131,8 +131,8 @@ export function Wallet() {
 				destinationAccount,
 			});
 			customToast.success({
-				title: "Withdrawal Initiated",
-				description: "Your withdrawal request is being processed",
+				title: "Emergency Transfer Initiated",
+				description: "Your transfer request is being processed",
 			});
 			setWithdrawDialogOpen(false);
 			setAmount("");

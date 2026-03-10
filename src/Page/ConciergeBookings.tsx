@@ -78,8 +78,8 @@ export function ConciergeBookings() {
 				if (res.data?.success) {
 					setConciergeItems(res.data.data.data || []);
 				}
-			} catch (e) {
-				console.error(e);
+			} catch {
+				// ignore
 			}
 		};
 		fetchConciergeItems();

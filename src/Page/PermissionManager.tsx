@@ -112,8 +112,7 @@ export function PermissionManager() {
 			try {
 				const response = await getAllPAs();
 				setPas(response || []);
-			} catch (err: unknown) {
-				// console.error("Failed to fetch PAs:", err);
+			} catch {
 				customToast.error("Failed to fetch PAs");
 			}
 		};
@@ -126,8 +125,7 @@ export function PermissionManager() {
 		try {
 			const perms = await getPAPermissions(paId);
 			setPermissions(perms || []);
-		} catch (err: unknown) {
-			// console.error("Failed to fetch permissions:", err);
+		} catch {
 			customToast.error("Failed to fetch permissions");
 			setPermissions([]);
 		} finally {
@@ -146,8 +144,7 @@ export function PermissionManager() {
 			// Refresh list
 			const response = await getAllPAs();
 			setPas(response || []);
-		} catch (err: unknown) {
-			// console.error("Failed to create PA:", err);
+		} catch {
 			customToast.error("Failed to create PA");
 		} finally {
 			setCreating(false);
@@ -165,8 +162,7 @@ export function PermissionManager() {
 			// Refresh list
 			const response = await getAllPAs();
 			setPas(response || []);
-		} catch (err: unknown) {
-			// console.error("Failed to update PA:", err);
+		} catch {
 			customToast.error("Failed to update PA");
 		} finally {
 			setUpdating(false);
@@ -184,8 +180,7 @@ export function PermissionManager() {
 			// Refresh list
 			const response = await getAllPAs();
 			setPas(response || []);
-		} catch (err: unknown) {
-			// console.error("Failed to delete PA:", err);
+		} catch {
 			customToast.error("Failed to delete PA");
 		} finally {
 			setDeleting(false);
@@ -224,8 +219,7 @@ export function PermissionManager() {
 		try {
 			await updatePAPermissions(selectedPaId, permissions);
 			customToast.success("Permissions updated successfully");
-		} catch (err: unknown) {
-			// console.error("Failed to update permissions:", err);
+		} catch {
 			customToast.error("Failed to update permissions");
 		} finally {
 			setLoading(false);

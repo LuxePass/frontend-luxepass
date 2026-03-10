@@ -52,7 +52,6 @@ export function useListings() {
 			} catch (error: unknown) {
 				const err = error as { response?: { status?: number } };
 				if (err?.response?.status === 403) {
-					console.warn("Permission denied: Cannot access listings");
 					return { data: [], meta: null };
 				}
 				throw error;
@@ -158,17 +157,32 @@ export function useListings() {
 		return response.data?.data;
 	}, []);
 
-	const addMedia = useCallback(async (listingId: string, file: File) => {
+	const uploadListingImage = useCallback(async (file: File): Promise<string> => {
 		const formData = new FormData();
 		formData.append("file", file);
-		const response = await api.post(`/listings/${listingId}/media`, formData, {
-			headers: { "Content-Type": "multipart/form-data" },
-		});
-		return response.data?.data;
+		const response = await api.post<{ data?: { url?: string }; data?: { url?: string } }>(
+			"/listings/upload",
+			formData,
+			{ headers: { "Content-Type": "multipart/form-data" } }
+		);
+		const url = response.data?.data?.url ?? (response.data as { url?: string })?.url;
+		if (!url) throw new Error("Upload did not return URL");
+		return url;
 	}, []);
 
-	const deleteMedia = useCallback(async (listingId: string, mediaId: string) => {
-		await api.delete(`/listings/${listingId}/media/${mediaId}`);
+	const addMedia = useCallback(
+		async (
+			listingId: string,
+			media: Array<{ type: "IMAGE" | "VIDEO" | "VIRTUAL_TOUR"; url: string; caption?: string; order?: number }>
+		) => {
+			const response = await api.post(`/listings/${listingId}/media`, media);
+			return response.data?.data;
+		},
+		[]
+	);
+
+	const deleteMedia = useCallback(async (_listingId: string, mediaId: string) => {
+		await api.delete(`/listings/media/${mediaId}`);
 	}, []);
 
 	return {
@@ -182,6 +196,7 @@ export function useListings() {
 		updateVettingStatus,
 		deleteListing,
 		getMedia,
+		uploadListingImage,
 		addMedia,
 		deleteMedia,
 		updateLocalListing,

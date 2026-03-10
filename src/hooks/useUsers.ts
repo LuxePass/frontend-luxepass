@@ -53,7 +53,11 @@ export function useUsers() {
 	const getAssignedUsers = useCallback(
 		async (params?: { page?: number; limit?: number; search?: string }) => {
 			try {
-				return await request(api.get("/users", { params }));
+				return await request(
+					api.get("/users", {
+						params: { ...params, limit: params?.limit ?? 100 },
+					})
+				);
 			} catch (error: unknown) {
 				// Handle 403 permission errors gracefully
 				const err = error as {
@@ -63,7 +67,6 @@ export function useUsers() {
 					};
 				};
 				if (err?.response?.status === 403) {
-					// console.error("❌ 403 FORBIDDEN: Cannot access /users/assigned");
 					return { data: [], meta: null };
 				}
 				throw error;
