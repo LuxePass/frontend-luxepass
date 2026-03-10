@@ -143,6 +143,10 @@ export function ListingManagement() {
 
 	const [createDialogOpen, setCreateDialogOpen] = useState(false);
 	const [creating, setCreating] = useState(false);
+	type CreateListingPayload = Omit<Partial<PropertyListing>, "media"> & {
+		media?: { type: string; url: string; order: number }[];
+	};
+
 	const [newListing, setNewListing] = useState<Partial<PropertyListing>>({
 		name: "",
 		description: "",
@@ -163,9 +167,8 @@ export function ListingManagement() {
 		e.preventDefault();
 		setCreating(true);
 		try {
-			const payload: Partial<PropertyListing> & { media?: { type: string; url: string; order: number }[] } = {
-				...newListing,
-			};
+			const { media: _omitMedia, ...rest } = newListing;
+			const payload: CreateListingPayload = { ...rest };
 			if (createMediaUrls.length > 0) {
 				payload.media = createMediaUrls.map((url, i) => ({
 					type: "IMAGE",
@@ -173,7 +176,7 @@ export function ListingManagement() {
 					order: i,
 				}));
 			}
-			const createdListing = await createListing(payload);
+			const createdListing = await createListing(payload as Partial<PropertyListing>);
 			if (createdListing) {
 				addLocalListing(createdListing);
 			}
