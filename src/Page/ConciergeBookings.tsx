@@ -78,6 +78,9 @@ export function ConciergeBookings() {
 	const [conciergePopoverOpenByIndex, setConciergePopoverOpenByIndex] = useState<
 		Record<number, boolean>
 	>({});
+	const [otpExpiresAt, setOtpExpiresAt] = useState<string | null>(null);
+	const [otpCode, setOtpCode] = useState("");
+	const [otpRequesting, setOtpRequesting] = useState(false);
 
 	useEffect(() => {
 		getBookings({ type: "CONCIERGE" });
@@ -125,9 +128,37 @@ export function ConciergeBookings() {
 		setNewBookings(updated);
 	};
 
+	const handleRequestOtp = async () => {
+		if (!selectedUserId) {
+			customToast.error("Please select a user first");
+			return;
+		}
+		setOtpRequesting(true);
+		try {
+			const res = await api.post("/pa-otp/request", {
+				userId: selectedUserId,
+				action: "BOOKING_CREATE",
+			});
+			const expiresAt = res.data?.data?.expiresAt ?? res.data?.expiresAt;
+			setOtpExpiresAt(expiresAt ?? null);
+			customToast.success("OTP sent to client via WhatsApp. Ask them for the code.");
+		} catch (err: unknown) {
+			const msg =
+				(err as { response?: { data?: { error?: { message?: string } } } })
+					?.response?.data?.error?.message || "Failed to send OTP";
+			customToast.error(msg);
+		} finally {
+			setOtpRequesting(false);
+		}
+	};
+
 	const handleCreateBooking = async () => {
 		if (!selectedUserId) {
 			customToast.error("Please select a user");
+			return;
+		}
+		if (!otpCode.trim()) {
+			customToast.error("Please request an OTP and enter the code from the client");
 			return;
 		}
 
@@ -147,9 +178,10 @@ export function ConciergeBookings() {
 				);
 				const itemName = item ? item.name : newBookings[0].conciergeItemId;
 
-				// Create single booking using PA-specific endpoint
+				// Create single booking using PA-specific endpoint (OTP required)
 				await api.post("/bookings/pa-create", {
 					userId: selectedUserId,
+					otpCode: otpCode.trim(),
 					type: "CONCIERGE",
 					specialRequests:
 						`Concierge Item: ${itemName}. Notes: ${newBookings[0].notes}`.substring(
@@ -159,7 +191,7 @@ export function ConciergeBookings() {
 				});
 				customToast.success("Booking created successfully");
 			} else {
-				// Create bulk bookings
+				// Create bulk bookings (OTP required)
 				const mappedBookings = newBookings.map((b) => {
 					const item = conciergeItems.find((i) => i.id === b.conciergeItemId);
 					const itemName = item ? item.name : b.conciergeItemId;
@@ -172,6 +204,7 @@ export function ConciergeBookings() {
 
 				await api.post("/bookings/pa-create-bulk", {
 					userId: selectedUserId,
+					otpCode: otpCode.trim(),
 					bookings: mappedBookings,
 				});
 				customToast.success(`Successfully created ${newBookings.length} bookings`);
@@ -181,6 +214,8 @@ export function ConciergeBookings() {
 			getBookings({ type: "CONCIERGE" });
 			// Reset form
 			setSelectedUserId("");
+			setOtpCode("");
+			setOtpExpiresAt(null);
 			setNewBookings([{ conciergeItemId: "", notes: "" }]);
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		} catch (err: any) {
@@ -243,7 +278,13 @@ export function ConciergeBookings() {
 						<h3 className="font-bold">Concierge Bookings</h3>
 						<Dialog
 							open={createOpen}
-							onOpenChange={setCreateOpen}>
+							onOpenChange={(open) => {
+								setCreateOpen(open);
+								if (!open) {
+									setOtpCode("");
+									setOtpExpiresAt(null);
+								}
+							}}>
 							<DialogTrigger asChild>
 								<Button className="bg-violet-600 hover:bg-violet-700">
 									<Plus className="size-4 mr-2" />
@@ -305,6 +346,35 @@ export function ConciergeBookings() {
 												</Command>
 											</PopoverContent>
 										</Popover>
+									</div>
+
+									<div className="grid gap-2">
+										<Label>OTP (required)</Label>
+										<div className="flex gap-2">
+											<Button
+												type="button"
+												variant="outline"
+												onClick={handleRequestOtp}
+												disabled={!selectedUserId || otpRequesting}
+												className="shrink-0">
+												{otpRequesting ? "Sending…" : "Send OTP to client"}
+											</Button>
+											<Input
+												placeholder="Enter code from client"
+												value={otpCode}
+												onChange={(e) =>
+													setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+												}
+												className="max-w-[8rem] bg-zinc-50 dark:bg-zinc-950"
+												maxLength={6}
+											/>
+										</div>
+										{otpExpiresAt && (
+											<p className="text-xs text-zinc-500">
+												Code sent. Expires{" "}
+												{new Date(otpExpiresAt).toLocaleTimeString()}.
+											</p>
+										)}
 									</div>
 
 									<div className="space-y-4 border rounded-xl p-4 border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
