@@ -58,17 +58,17 @@ export function QuickViews({
 	]);
 
 	const pendingInquiries = useMemo(
-		() => (Array.isArray(bookings) ? bookings : []).filter((b) => b.status === "INQUIRY"),
+		() => bookings.filter((b) => b.status === "INQUIRY"),
 		[bookings],
 	);
 
 	const pendingTransfers = useMemo(
-		() => (Array.isArray(transfers) ? transfers : []).filter((t) => t.status === "PENDING"),
+		() => transfers.filter((t) => t.status === "PENDING"),
 		[transfers],
 	);
 
 	const activeListings = useMemo(
-		() => (Array.isArray(listings) ? listings : []).filter((l) => l.isActive),
+		() => listings.filter((l) => l.isActive),
 		[listings],
 	);
 
@@ -94,15 +94,15 @@ export function QuickViews({
 			},
 			{
 				title: "WhatsApp Live Chat",
-				description: `${(Array.isArray(conversations) ? conversations : []).length} active conversations`,
+				description: `${conversations.length} active conversations`,
 				icon: MessageCircle,
 				iconColor: "text-green-600 dark:text-green-400",
 				bgColor: "bg-green-100 dark:bg-green-950/50",
 				borderColor: "border-green-200 dark:border-green-900",
 				onClick: onChatClick,
-				badge: { text: (Array.isArray(conversations) ? conversations : []).length.toString(), color: "bg-green-600" },
+				badge: { text: conversations.length.toString(), color: "bg-green-600" },
 				loading: loadingChat,
-				items: (Array.isArray(conversations) ? conversations : []).slice(0, 3).map((conv) => {
+				items: conversations.slice(0, 3).map((conv) => {
 					let combinedText = `${conv.clientName}: ${conv.lastMessage}`;
 					if (combinedText.length > 150) {
 						combinedText = combinedText.substring(0, 150) + "...";
@@ -150,14 +150,14 @@ export function QuickViews({
 			},
 			{
 				title: "Referral Program",
-				description: `${(Array.isArray(activities) ? activities : []).length} total referrals`,
+				description: `${activities.length} total referrals`,
 				icon: Users,
 				iconColor: "text-indigo-600 dark:text-indigo-400",
 				bgColor: "bg-indigo-100 dark:bg-indigo-950/50",
 				borderColor: "border-indigo-200 dark:border-indigo-900",
 				onClick: onNavigateToReferrals,
-				badge: { text: (Array.isArray(activities) ? activities : []).length.toString(), color: "bg-indigo-600" },
-				items: (Array.isArray(activities) ? activities : []).slice(0, 3).map((ref) => ({
+				badge: { text: activities.length.toString(), color: "bg-indigo-600" },
+				items: activities.slice(0, 3).map((ref) => ({
 					text: `${ref.referrerName} → ${ref.referredName} - ${ref.rewardAmount > 0 ? `₦${ref.rewardAmount.toLocaleString()} earned` : "Pending"}`,
 					time: ref.dateReferred,
 					urgent: ref.rewardStatus === "pending",

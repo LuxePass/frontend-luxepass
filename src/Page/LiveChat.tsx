@@ -20,19 +20,9 @@ import {
 	RefreshCw,
 	UserPlus,
 	Archive,
-	Tag,
 } from "lucide-react";
 import { cn } from "../utils";
 import { customToast } from "./CustomToast";
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from "../components/ui/dialog";
-import { Label } from "../components/ui/label";
 
 interface ChatMessage {
 	id: string;
@@ -88,13 +78,6 @@ export function LiveChat() {
 	const [lastMessageFetch, setLastMessageFetch] = useState<
 		Record<string, number>
 	>({});
-	const [offerDialogOpen, setOfferDialogOpen] = useState(false);
-	const [offerTitle, setOfferTitle] = useState("");
-	const [offerDescription, setOfferDescription] = useState("");
-	const [offerImageUrl, setOfferImageUrl] = useState("");
-	const [offerCtaLabel, setOfferCtaLabel] = useState("");
-	const [offerCtaUrl, setOfferCtaUrl] = useState("");
-	const [sendingOffer, setSendingOffer] = useState(false);
 
 	const { user } = useAuth();
 
@@ -327,6 +310,8 @@ export function LiveChat() {
 					data?: ConversationApiItem[];
 					error?: string;
 				};
+
+				// console.log("📦 [LiveChat] Fetch Payload:", payload);
 
 				// Handle different response formats
 				let rawItems: ConversationApiItem[] = [];
@@ -830,6 +815,7 @@ export function LiveChat() {
 				void fetchMessages(selectedConversation, true);
 			}, 1000);
 		} catch (err) {
+			// console.error("Error sending message:", err);
 			const errorMessage =
 				err instanceof Error ? err.message : "Failed to send message";
 			customToast.error({
@@ -847,73 +833,6 @@ export function LiveChat() {
 		normalizeTimestamp,
 		normalizePhoneNumber,
 		whatsappBackendBaseUrl,
-		fetchMessages,
-	]);
-
-	const handleSendOffer = useCallback(async () => {
-		if (!selectedConversation || (!offerTitle.trim() && !offerDescription.trim())) {
-			customToast.error({ title: "Error", description: "Enter at least a title or description." });
-			return;
-		}
-		const conv = conversations.find((c) => c.id === selectedConversation);
-		if (!conv?.clientPhone) {
-			customToast.error({ title: "Error", description: "Invalid conversation." });
-			return;
-		}
-		const normalizedPhone = normalizePhoneNumber(conv.clientPhone);
-		if (!normalizedPhone || normalizedPhone.length < 10) {
-			customToast.error({ title: "Error", description: "Invalid phone number." });
-			return;
-		}
-		setSendingOffer(true);
-		try {
-			const payload: Record<string, string> = {
-				to: normalizedPhone,
-				type: "offer",
-				title: offerTitle.trim(),
-				description: offerDescription.trim(),
-			};
-			if (offerImageUrl.trim()) payload.imageUrl = offerImageUrl.trim();
-			if (offerCtaLabel.trim()) payload.ctaLabel = offerCtaLabel.trim();
-			if (offerCtaUrl.trim()) payload.ctaUrl = offerCtaUrl.trim();
-
-			const response = await fetch(`${whatsappBackendBaseUrl}/messages`, {
-				method: "POST",
-				headers: backendHeaders,
-				body: JSON.stringify(payload),
-			});
-			if (!response.ok) {
-				const body = await response.json().catch(() => ({}));
-				const msg = body?.error?.message ?? body?.error ?? "Failed to send offer";
-				throw new Error(typeof msg === "string" ? msg : "Failed to send offer");
-			}
-			customToast.success({ title: "Offer sent", description: "Offer sent via WhatsApp." });
-			setOfferDialogOpen(false);
-			setOfferTitle("");
-			setOfferDescription("");
-			setOfferImageUrl("");
-			setOfferCtaLabel("");
-			setOfferCtaUrl("");
-			setTimeout(() => selectedConversation && void fetchMessages(selectedConversation, true), 1000);
-		} catch (err) {
-			customToast.error({
-				title: "Error",
-				description: err instanceof Error ? err.message : "Failed to send offer",
-			});
-		} finally {
-			setSendingOffer(false);
-		}
-	}, [
-		selectedConversation,
-		conversations,
-		offerTitle,
-		offerDescription,
-		offerImageUrl,
-		offerCtaLabel,
-		offerCtaUrl,
-		normalizePhoneNumber,
-		whatsappBackendBaseUrl,
-		backendHeaders,
 		fetchMessages,
 	]);
 
@@ -937,7 +856,8 @@ export function LiveChat() {
 			});
 
 			customToast.success("User assigned to you successfully");
-		} catch {
+		} catch (err) {
+			// console.error("Assignment failed", err);
 			customToast.error("Failed to assign user");
 		}
 	};
@@ -962,7 +882,8 @@ export function LiveChat() {
 			});
 
 			customToast.success("Marked as resolved (Unassigned)");
-		} catch {
+		} catch (err) {
+			// console.error("Resolution failed", err);
 			customToast.error("Failed to mark as resolved");
 		}
 	};
@@ -980,10 +901,8 @@ export function LiveChat() {
 		[fetchMessages],
 	);
 
-	const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
-
 	/**
-	 * Handle close chat. PA cannot end chat until 24h after user's last message.
+	 * Handle close chat
 	 */
 	const handleCloseChat = async () => {
 		if (!selectedConversation) return;
@@ -991,22 +910,8 @@ export function LiveChat() {
 		const conv = conversations.find((c) => c.id === selectedConversation);
 		if (!conv) return;
 
-		const msgs = messages[selectedConversation] ?? [];
-		const lastUserMessage = [...msgs]
-			.filter((m) => m.sender === "client")
-			.sort((a, b) => (b.timestampValue ?? 0) - (a.timestampValue ?? 0))[0];
-		if (lastUserMessage?.timestampValue != null) {
-			const elapsed = Date.now() - (typeof lastUserMessage.timestampValue === "number" ? lastUserMessage.timestampValue : Number(lastUserMessage.timestampValue));
-			if (elapsed < TWENTY_FOUR_HOURS_MS) {
-				customToast.error({
-					title: "Cannot end chat yet",
-					description: "You can end the chat only 24 hours after the user's last message.",
-				});
-				return;
-			}
-		}
-
 		try {
+			// Call backend to end live chat session
 			const response = await fetch(
 				`${whatsappBackendBaseUrl}/livechat/${conv.clientPhone}/end`,
 				{
@@ -1025,6 +930,7 @@ export function LiveChat() {
 				description: `Live chat with ${conv.clientName} has been ended. User can now access the menu.`,
 			});
 		} catch (error) {
+			// console.error("Error ending live chat:", error);
 			customToast.error({
 				title: "Error",
 				description:
@@ -1101,7 +1007,7 @@ export function LiveChat() {
 					method: "POST",
 					headers: backendHeaders,
 				},
-			).catch(() => {});
+			).catch((err) => console.error("Error marking as read:", err));
 		}
 	}, [selectedConversation]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -1423,6 +1329,7 @@ export function LiveChat() {
 						{/* Input - Only show if user has requested live support */}
 						{selectedConv && (
 							<div className="p-3 lg:p-4 shrink-0">
+								{/* Check if this is a live support conversation - you may need to add this field to your conversation data */}
 								<div className="flex gap-2">
 									<Input
 										placeholder="Type your message..."
@@ -1438,92 +1345,12 @@ export function LiveChat() {
 										className="bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700 text-sm"
 									/>
 									<Button
-										variant="outline"
-										size="sm"
-										className="shrink-0 size-9 lg:size-10 p-0"
-										onClick={() => setOfferDialogOpen(true)}
-										title="Send offer (title, description, image, CTA)">
-										<Tag className="size-4" />
-									</Button>
-									<Button
 										onClick={() => void handleSendMessage()}
 										disabled={!inputMessage.trim() || isSending}
 										className="bg-green-600 hover:bg-green-700 shrink-0 size-9 lg:size-10 p-0">
 										<Send className="size-4" />
 									</Button>
 								</div>
-								<Dialog open={offerDialogOpen} onOpenChange={setOfferDialogOpen}>
-									<DialogContent className="sm:max-w-md bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
-										<DialogHeader>
-											<DialogTitle>Send offer</DialogTitle>
-											<DialogDescription>
-												Send a promotional offer to this user via WhatsApp (title, description, image, CTA).
-											</DialogDescription>
-										</DialogHeader>
-										<div className="grid gap-4 py-4">
-											<div className="grid gap-2">
-												<Label htmlFor="offer-title">Title</Label>
-												<Input
-													id="offer-title"
-													placeholder="Offer title"
-													value={offerTitle}
-													onChange={(e) => setOfferTitle(e.target.value)}
-													className="bg-zinc-50 dark:bg-zinc-950"
-												/>
-											</div>
-											<div className="grid gap-2">
-												<Label htmlFor="offer-desc">Description</Label>
-												<Input
-													id="offer-desc"
-													placeholder="Offer description"
-													value={offerDescription}
-													onChange={(e) => setOfferDescription(e.target.value)}
-													className="bg-zinc-50 dark:bg-zinc-950"
-												/>
-											</div>
-											<div className="grid gap-2">
-												<Label htmlFor="offer-image">Image URL (optional)</Label>
-												<Input
-													id="offer-image"
-													placeholder="https://..."
-													value={offerImageUrl}
-													onChange={(e) => setOfferImageUrl(e.target.value)}
-													className="bg-zinc-50 dark:bg-zinc-950"
-												/>
-											</div>
-											<div className="grid gap-2">
-												<Label htmlFor="offer-cta-label">CTA button label (optional)</Label>
-												<Input
-													id="offer-cta-label"
-													placeholder="e.g. Claim now"
-													value={offerCtaLabel}
-													onChange={(e) => setOfferCtaLabel(e.target.value)}
-													className="bg-zinc-50 dark:bg-zinc-950"
-												/>
-											</div>
-											<div className="grid gap-2">
-												<Label htmlFor="offer-cta-url">CTA URL (optional)</Label>
-												<Input
-													id="offer-cta-url"
-													placeholder="https://..."
-													value={offerCtaUrl}
-													onChange={(e) => setOfferCtaUrl(e.target.value)}
-													className="bg-zinc-50 dark:bg-zinc-950"
-												/>
-											</div>
-										</div>
-										<DialogFooter>
-											<Button variant="outline" onClick={() => setOfferDialogOpen(false)}>
-												Cancel
-											</Button>
-											<Button
-												onClick={() => void handleSendOffer()}
-												disabled={sendingOffer || (!offerTitle.trim() && !offerDescription.trim())}>
-												{sendingOffer ? "Sending…" : "Send offer"}
-											</Button>
-										</DialogFooter>
-									</DialogContent>
-								</Dialog>
 								<p className="text-xs text-zinc-500 mt-2 flex items-center gap-1">
 									<MessageCircle className="size-3 text-green-500" />
 									Messages sent via WhatsApp Business API

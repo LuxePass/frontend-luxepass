@@ -171,7 +171,8 @@ export function ReferralProgram() {
 						});
 					}
 				}
-			} catch {
+			} catch (error) {
+				console.error("Failed to fetch referral stats:", error);
 				customToast.error({
 					title: "Error",
 					description: "Failed to load referral data",

@@ -101,10 +101,7 @@ export function useWallet() {
 			destinationAccount?: DestinationAccount;
 		}) => {
 			const response = await api.post("/transfers/pa-withdraw", transferData);
-			const data = response.data?.data;
-			return data as
-				| (Record<string, unknown> & { otpSent?: boolean })
-				| undefined;
+			return response.data?.data;
 		},
 		[],
 	);
@@ -123,8 +120,8 @@ export function useWallet() {
 				setSavedBankAccounts(payload.data);
 				return payload.data;
 			}
-		} catch {
-			// ignore
+		} catch (error) {
+			console.error("Error fetching saved bank accounts:", error);
 		}
 		return [];
 	}, []);

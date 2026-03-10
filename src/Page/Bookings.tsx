@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useBookings, type Booking } from "../hooks/useBookings";
 import { Card } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
@@ -58,8 +58,6 @@ export function Bookings() {
 	const [statusFilter] = useState("all");
 	const [createOpen, setCreateOpen] = useState(false);
 	const [selectedUserId, setSelectedUserId] = useState("");
-	const [clientSearch, setClientSearch] = useState("");
-	const [listingSearch, setListingSearch] = useState("");
 	const [newBookings, setNewBookings] = useState([
 		{
 			propertyId: "",
@@ -75,32 +73,6 @@ export function Bookings() {
 		getAssignedUsers();
 		getListings();
 	}, [getBookings, getAssignedUsers, getListings]);
-
-	useEffect(() => {
-		const t = setTimeout(() => {
-			getBookings({ search: searchQuery.trim() || undefined });
-		}, 300);
-		return () => clearTimeout(t);
-	}, [searchQuery, getBookings]);
-
-	const filteredUsers = useMemo(() => {
-		if (!clientSearch.trim()) return users;
-		const q = clientSearch.toLowerCase();
-		return users.filter(
-			(u) =>
-				u.name.toLowerCase().includes(q) || u.uniqueId.toLowerCase().includes(q)
-		);
-	}, [users, clientSearch]);
-
-	const filteredListings = useMemo(() => {
-		if (!listingSearch.trim()) return listings;
-		const q = listingSearch.toLowerCase();
-		return listings.filter(
-			(l) =>
-				l.name.toLowerCase().includes(q) ||
-				(l.propertyType ?? "").toLowerCase().includes(q)
-		);
-	}, [listings, listingSearch]);
 
 	const handleAddBookingRow = () => {
 		setNewBookings([
@@ -168,9 +140,8 @@ export function Bookings() {
 
 			setCreateOpen(false);
 			getBookings();
+			// Reset form
 			setSelectedUserId("");
-			setClientSearch("");
-			setListingSearch("");
 			setNewBookings([{ propertyId: "", checkIn: "", checkOut: "", notes: "" }]);
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		} catch (err: any) {
@@ -195,9 +166,14 @@ export function Bookings() {
 	};
 
 	const filteredBookings = bookings.filter((booking) => {
+		// Safe access to unknown property 'user' if it exists in response but not in interface,
+		// or just filter by ID/Type/Amount
+		const searchTarget =
+			`${booking.id} ${booking.type} ${booking.totalAmount}`.toLowerCase();
+		const matchesSearch = searchTarget.includes(searchQuery.toLowerCase());
 		const matchesStatus =
 			statusFilter === "all" || booking.status === statusFilter;
-		return matchesStatus;
+		return matchesSearch && matchesStatus;
 	});
 
 	const getStatusBadge = (status: string) => {
@@ -244,25 +220,19 @@ export function Bookings() {
 								</DialogHeader>
 								<div className="grid gap-4 py-4">
 									<div className="grid gap-2">
-										<Label>Client (search by ID or name)</Label>
-										<Input
-											placeholder="Search by client ID or name..."
-											value={clientSearch}
-											onChange={(e) => setClientSearch(e.target.value)}
-											className="bg-zinc-50 dark:bg-zinc-950"
-										/>
+										<Label htmlFor="user">Select User</Label>
 										<Select
 											value={selectedUserId}
 											onValueChange={setSelectedUserId}>
 											<SelectTrigger className="bg-zinc-50 dark:bg-zinc-950">
-												<SelectValue placeholder="Select client" />
+												<SelectValue placeholder="Select User" />
 											</SelectTrigger>
 											<SelectContent className="max-h-[200px]">
-												{filteredUsers.map((u) => (
+												{users.map((u) => (
 													<SelectItem
 														key={u.uniqueId}
 														value={u.uniqueId}>
-														{u.name} ({u.uniqueId})
+														{u.name}
 													</SelectItem>
 												))}
 											</SelectContent>
@@ -296,27 +266,21 @@ export function Bookings() {
 												)}
 
 												<div className="grid gap-2 pr-8">
-													<Label>Listing (search by name or category)</Label>
-													<Input
-														placeholder="Search listing..."
-														value={listingSearch}
-														onChange={(e) => setListingSearch(e.target.value)}
-														className="bg-zinc-50 dark:bg-zinc-900"
-													/>
+													<Label>Property {index + 1}</Label>
 													<Select
 														value={booking.propertyId}
 														onValueChange={(val) =>
 															handleUpdateBookingRow(index, "propertyId", val)
 														}>
 														<SelectTrigger className="bg-zinc-50 dark:bg-zinc-900">
-															<SelectValue placeholder="Select property" />
+															<SelectValue placeholder="Select Property" />
 														</SelectTrigger>
 														<SelectContent className="max-h-[200px]">
-															{filteredListings.map((l) => (
+															{listings.map((l) => (
 																<SelectItem
 																	key={l.id}
 																	value={l.id}>
-																	{l.name} — ₦{l.pricePerNight} {l.currency}
+																	{l.name} - {l.pricePerNight} {l.currency}
 																</SelectItem>
 															))}
 														</SelectContent>

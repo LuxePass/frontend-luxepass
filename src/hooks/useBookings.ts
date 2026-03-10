@@ -62,9 +62,9 @@ export function useBookings() {
 			status?: string;
 			type?: string;
 			userId?: string;
-			search?: string;
 		}) => {
 			try {
+				// Use explicit query params formatting as per user suggestion to avoid 404
 				let url = "/bookings";
 				if (params) {
 					const query = new URLSearchParams();
@@ -72,11 +72,16 @@ export function useBookings() {
 					if (params.limit) query.append("limit", params.limit.toString());
 					if (params.status) query.append("status", params.status);
 					if (params.type) query.append("type", params.type);
-					if (params.userId) query.append("userId", params.userId);
-					if (params.search?.trim()) query.append("search", params.search.trim());
+
+					// Handle userId specially to ensure we support both UUID and uniqueId
+					if (params.userId) {
+						query.append("userId", params.userId);
+					}
 
 					const queryString = query.toString();
-					if (queryString) url += `?${queryString}`;
+					if (queryString) {
+						url += `?${queryString}`;
+					}
 				}
 				return await request(api.get(url));
 			} catch (error: unknown) {
@@ -139,7 +144,7 @@ export function useBookings() {
 	}, []);
 
 	return {
-		bookings: Array.isArray(bookingsData?.data) ? bookingsData.data : [],
+		bookings: bookingsData?.data || [],
 		meta: bookingsData?.meta,
 		loading: bookingsLoading,
 		error: bookingsError,

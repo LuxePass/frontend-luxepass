@@ -31,8 +31,8 @@ export function MetricsCards() {
 					getUserDashboardStats(),
 					getBookingDashboardStats(),
 				]);
-			} catch {
-				// ignore
+			} catch (error: unknown) {
+				console.warn("Failed to fetch dashboard stats", error);
 			}
 		};
 

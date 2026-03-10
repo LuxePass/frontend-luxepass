@@ -16,15 +16,8 @@ export function useApi<T>() {
 	const request = useCallback(async (apiCall: Promise<unknown>) => {
 		setState((prev) => ({ ...prev, loading: true, error: null }));
 		try {
-			const response = (await apiCall) as { data?: { data?: unknown; meta?: unknown } };
-			const body = response.data;
-			const isPaginated =
-				body &&
-				typeof body === "object" &&
-				"data" in body &&
-				"meta" in body &&
-				(body as { meta?: unknown }).meta != null;
-			const data = (isPaginated ? body : body?.data ?? body) as T;
+			const response = (await apiCall) as { data?: { data?: T } };
+			const data = response.data?.data ?? (response.data as T);
 			setState({ data, loading: false, error: null });
 			return data;
 		} catch (error: unknown) {

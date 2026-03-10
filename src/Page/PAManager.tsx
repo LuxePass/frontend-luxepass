@@ -94,7 +94,8 @@ export function PAManager() {
 		try {
 			const data = await getAllPAs();
 			setPas(data || []);
-		} catch {
+		} catch (err) {
+			console.error("Failed to fetch PAs:", err);
 			customToast.error("Failed to fetch PAs");
 		} finally {
 			setLoading(false);

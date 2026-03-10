@@ -19,8 +19,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 	const logout = useCallback(async () => {
 		try {
 			await api.post("/auth/pa/logout");
-		} catch {
-			// ignore
+		} catch (_error) {
+			// console.error("Logout API call failed", error);
 		} finally {
 			setAccessToken(null);
 			setUser(null);
@@ -41,7 +41,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 					if (storedUser) {
 						setUser(JSON.parse(storedUser));
 					}
-				} catch {
+				} catch (_error) {
+					// console.error("Failed to initialize auth", error);
 					logout();
 				}
 			}

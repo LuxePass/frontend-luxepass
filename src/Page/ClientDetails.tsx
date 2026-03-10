@@ -69,8 +69,8 @@ export function ClientDetails({ clientId, onClose }: ClientDetailsProps) {
 			if (result.success) {
 				setWhatsappAccounts(result.data || []);
 			}
-		} catch {
-			// ignore
+		} catch (error) {
+			// console.error("Failed to fetch WhatsApp accounts", error);
 		}
 	};
 
@@ -90,27 +90,20 @@ export function ClientDetails({ clientId, onClose }: ClientDetailsProps) {
 
 		setWithdrawLoading(true);
 		try {
-			const result = await initiateTransfer({
+			await initiateTransfer({
 				amount: withdrawAmount,
 				narration: finalNarration,
 				userIdentifier: client?.uniqueId || clientId,
 			});
 
-			if (result?.otpSent !== false) {
-				toast.success(
-					"OTP sent to the user's WhatsApp. The transfer will complete when they confirm with the code.",
-				);
-			} else {
-				toast.warning(
-					"Transfer requested but OTP could not be sent to WhatsApp. User can confirm via support with the transfer reference.",
-				);
-			}
+			toast.success("Withdrawal initiated successfully");
 			setShowWithdrawDialog(false);
 			setWithdrawAmount("");
 			setWithdrawNarration("");
 			setSelectedAccountId("");
 		} catch (error) {
-			toast.error("Failed to process emergency transfer");
+			// console.error("Withdrawal failed", error);
+			toast.error("Failed to process withdrawal");
 		} finally {
 			setWithdrawLoading(false);
 		}
@@ -129,8 +122,8 @@ export function ClientDetails({ clientId, onClose }: ClientDetailsProps) {
 					});
 					setClientBookings(bookingsData.data || []);
 				}
-			} catch {
-				// ignore
+			} catch (err) {
+				// console.error("Failed to fetch client details", err);
 			}
 		};
 
@@ -255,7 +248,8 @@ export function ClientDetails({ clientId, onClose }: ClientDetailsProps) {
 									className="gap-2 bg-red-600 hover:bg-red-700 text-white ml-2"
 									onClick={() => setShowWithdrawDialog(true)}>
 									<TrendingUp className="size-4 rotate-180" />{" "}
-									Emergency Transfer
+									{/* Down trend for withdrawal */}
+									Withdraw Funds
 								</Button>
 							</div>
 						</div>
@@ -268,9 +262,9 @@ export function ClientDetails({ clientId, onClose }: ClientDetailsProps) {
 					onOpenChange={setShowWithdrawDialog}>
 					<DialogContent className="sm:max-w-[425px]">
 						<DialogHeader>
-							<DialogTitle>Emergency Transfer</DialogTitle>
+							<DialogTitle>Withdraw Funds</DialogTitle>
 							<DialogDescription>
-								Initiate an emergency transfer from the client's wallet to the specified bank account.
+								Initiate a withdrawal from the client's wallet to their bank account.
 							</DialogDescription>
 						</DialogHeader>
 						<div className="grid gap-4 py-4">
@@ -321,7 +315,7 @@ export function ClientDetails({ clientId, onClose }: ClientDetailsProps) {
 									value={withdrawNarration}
 									onChange={(e) => setWithdrawNarration(e.target.value)}
 									className="col-span-3"
-									placeholder="Reason for transfer"
+									placeholder="Reason for withdrawal"
 								/>
 							</div>
 						</div>
@@ -334,7 +328,7 @@ export function ClientDetails({ clientId, onClose }: ClientDetailsProps) {
 							<Button
 								onClick={handleWithdraw}
 								disabled={withdrawLoading}>
-								{withdrawLoading ? "Processing..." : "Confirm Emergency Transfer"}
+								{withdrawLoading ? "Processing..." : "Confirm Withdrawal"}
 							</Button>
 						</DialogFooter>
 					</DialogContent>
