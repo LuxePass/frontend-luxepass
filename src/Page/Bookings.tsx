@@ -197,6 +197,7 @@ export function Bookings() {
 	const [otpExpiresAt, setOtpExpiresAt] = useState<string | null>(null);
 	const [otpCode, setOtpCode] = useState("");
 	const [otpRequesting, setOtpRequesting] = useState(false);
+	const [canRequestOtp, setCanRequestOtp] = useState(false);
 
 	useEffect(() => {
 		getBookings();
@@ -219,6 +220,30 @@ export function Bookings() {
 			{ propertyId: "", checkIn: "", checkOut: "", notes: "" },
 		]);
 	};
+
+	// Only allow OTP request when user is on live chat and assigned to current PA
+	useEffect(() => {
+		if (!selectedUserId) {
+			setCanRequestOtp(false);
+			return;
+		}
+		let cancelled = false;
+		api
+			.get("/pa-otp/can-request", { params: { userId: selectedUserId } })
+			.then((res) => {
+				if (!cancelled) {
+					const allowed =
+						res.data?.data?.allowed ?? res.data?.allowed ?? false;
+					setCanRequestOtp(Boolean(allowed));
+				}
+			})
+			.catch(() => {
+				if (!cancelled) setCanRequestOtp(false);
+			});
+		return () => {
+			cancelled = true;
+		};
+	}, [selectedUserId]);
 
 	const handleRemoveBookingRow = (index: number) => {
 		const updated = [...newBookings];
@@ -448,15 +473,21 @@ export function Bookings() {
 
 									<div className="grid gap-2">
 										<Label>OTP (required)</Label>
-										<div className="flex gap-2">
+										<div className="flex gap-2 flex-wrap items-center">
 											<Button
 												type="button"
 												variant="outline"
 												onClick={handleRequestOtp}
-												disabled={!selectedUserId || otpRequesting}
-												className="shrink-0">
+												disabled={!selectedUserId || otpRequesting || !canRequestOtp}
+												className="shrink-0"
+												title={!canRequestOtp && selectedUserId ? "User must be on live chat and assigned to you" : undefined}>
 												{otpRequesting ? "Sending…" : "Send OTP to client"}
 											</Button>
+											{selectedUserId && !canRequestOtp && (
+												<span className="text-xs text-amber-600 dark:text-amber-400">
+													User must request live support first (on live chat, assigned to you).
+												</span>
+											)}
 											<Input
 												placeholder="Enter code from client"
 												value={otpCode}

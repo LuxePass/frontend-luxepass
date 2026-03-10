@@ -7,6 +7,7 @@ import { Wallet } from "./Page/Wallet";
 import { InAppBrowser } from "./Page/InAppBrowser";
 import { TaskQueue } from "./Page/TaskQueue";
 import { TransferOverrideForm } from "./Page/TransferOverrideForm";
+import { TransferRequests } from "./Page/TransferRequests";
 import { ListingManagement } from "./Page/ListingManagement";
 import { LiveChat } from "./Page/LiveChat";
 import { ReferralProgram } from "./Page/ReferralProgram";
@@ -180,6 +181,10 @@ function App() {
 							<Route
 								path="livechat"
 								element={<LiveChat />}
+							/>
+							<Route
+								path="transfers"
+								element={<TransferRequests />}
 							/>
 							<Route
 								path="transfer"

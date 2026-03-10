@@ -67,6 +67,9 @@ export default function DashboardLayout() {
 			case "transfer":
 				navigate("/transfer");
 				break;
+			case "transfers":
+				navigate("/transfers");
+				break;
 			case "listings":
 				navigate("/listings");
 				break;

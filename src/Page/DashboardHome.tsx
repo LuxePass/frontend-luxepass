@@ -16,7 +16,7 @@ export function DashboardHome() {
 						<QuickViews
 							onTasksClick={() => navigate("/tasks")}
 							onChatClick={() => navigate("/livechat")}
-							onTransferClick={() => navigate("/transfer")}
+							onTransferClick={() => navigate("/transfers")}
 							onListingsClick={() => navigate("/listings")}
 							onNavigateToReferrals={() => navigate("/referrals")}
 						/>

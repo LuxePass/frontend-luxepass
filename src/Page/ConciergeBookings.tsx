@@ -87,6 +87,7 @@ export function ConciergeBookings() {
 	const [otpExpiresAt, setOtpExpiresAt] = useState<string | null>(null);
 	const [otpCode, setOtpCode] = useState("");
 	const [otpRequesting, setOtpRequesting] = useState(false);
+	const [canRequestOtp, setCanRequestOtp] = useState(false);
 
 	useEffect(() => {
 		getBookings({ type: "CONCIERGE" });
@@ -113,6 +114,30 @@ export function ConciergeBookings() {
 		}, 300);
 		return () => clearTimeout(t);
 	}, [createOpen, userSearchQuery, getAssignedUsers]);
+
+	// Only allow OTP request when user is on live chat and assigned to current PA
+	useEffect(() => {
+		if (!selectedUserId) {
+			setCanRequestOtp(false);
+			return;
+		}
+		let cancelled = false;
+		api
+			.get("/pa-otp/can-request", { params: { userId: selectedUserId } })
+			.then((res) => {
+				if (!cancelled) {
+					const allowed =
+						res.data?.data?.allowed ?? res.data?.allowed ?? false;
+					setCanRequestOtp(Boolean(allowed));
+				}
+			})
+			.catch(() => {
+				if (!cancelled) setCanRequestOtp(false);
+			});
+		return () => {
+			cancelled = true;
+		};
+	}, [selectedUserId]);
 
 	const handleAddBookingRow = () => {
 		setNewBookings([...newBookings, { conciergeItemId: "", notes: "" }]);
@@ -183,6 +208,10 @@ export function ConciergeBookings() {
 				);
 				const itemName = item ? item.name : newBookings[0].conciergeItemId;
 				const amount = item ? Number(item.price) || 0 : 0;
+				if (Number.isNaN(amount) || amount <= 0) {
+					customToast.error("Selected concierge item has no valid price. Please fix the item in Concierge list.");
+					return;
+				}
 
 				await api.post("/bookings/pa-create", {
 					userId: selectedUserId,
@@ -210,6 +239,13 @@ export function ConciergeBookings() {
 							`Concierge Item: ${itemName}. Notes: ${b.notes}`.substring(0, 950),
 					};
 				});
+				const hasInvalidAmount = mappedBookings.some(
+					(m) => Number.isNaN(Number(m.totalAmount)) || Number(m.totalAmount) <= 0,
+				);
+				if (hasInvalidAmount) {
+					customToast.error("One or more concierge items have no valid price. Please fix in Concierge list.");
+					return;
+				}
 
 				await api.post("/bookings/pa-create-bulk", {
 					userId: selectedUserId,
@@ -368,10 +404,16 @@ export function ConciergeBookings() {
 												type="button"
 												variant="outline"
 												onClick={handleRequestOtp}
-												disabled={!selectedUserId || otpRequesting}
-												className="shrink-0">
+												disabled={!selectedUserId || otpRequesting || !canRequestOtp}
+												className="shrink-0"
+												title={!canRequestOtp && selectedUserId ? "User must be on live chat and assigned to you" : undefined}>
 												{otpRequesting ? "Sending…" : "Send OTP to client"}
 											</Button>
+											{selectedUserId && !canRequestOtp && (
+												<span className="text-xs text-amber-600 dark:text-amber-400">
+													User must request live support first (on live chat, assigned to you).
+												</span>
+											)}
 											<Input
 												placeholder="Enter code from client"
 												value={otpCode}
