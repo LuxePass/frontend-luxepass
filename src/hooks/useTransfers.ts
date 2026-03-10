@@ -50,7 +50,7 @@ export function useTransfers() {
 	}, []);
 
 	return {
-		transfers: data?.data || [],
+		transfers: Array.isArray(data?.data) ? data.data : [],
 		meta: data?.meta,
 		loading,
 		error,

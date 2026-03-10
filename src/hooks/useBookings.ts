@@ -139,7 +139,7 @@ export function useBookings() {
 	}, []);
 
 	return {
-		bookings: bookingsData?.data || [],
+		bookings: Array.isArray(bookingsData?.data) ? bookingsData.data : [],
 		meta: bookingsData?.meta,
 		loading: bookingsLoading,
 		error: bookingsError,

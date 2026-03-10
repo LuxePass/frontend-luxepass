@@ -186,7 +186,7 @@ export function useListings() {
 	}, []);
 
 	return {
-		listings: data?.data || [],
+		listings: Array.isArray(data?.data) ? data.data : [],
 		meta: data?.meta,
 		loading,
 		error,
