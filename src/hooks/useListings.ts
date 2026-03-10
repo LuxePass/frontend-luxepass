@@ -160,12 +160,12 @@ export function useListings() {
 	const uploadListingImage = useCallback(async (file: File): Promise<string> => {
 		const formData = new FormData();
 		formData.append("file", file);
-		const response = await api.post<{ data?: { url?: string }; data?: { url?: string } }>(
+		const response = await api.post<{ data?: { url?: string } }>(
 			"/listings/upload",
 			formData,
 			{ headers: { "Content-Type": "multipart/form-data" } }
 		);
-		const url = response.data?.data?.url ?? (response.data as { url?: string })?.url;
+		const url = response.data?.data?.url;
 		if (!url) throw new Error("Upload did not return URL");
 		return url;
 	}, []);
