@@ -56,8 +56,14 @@ import {
 } from "../components/ui/command";
 
 export function ConciergeBookings() {
-	const { bookings, loading, getBookings, updateBookingStatus, confirmBooking } =
-		useBookings();
+	const {
+		bookings,
+		loading,
+		getBookings,
+		updateBookingStatus,
+		confirmBooking,
+		updateBookingInList,
+	} = useBookings();
 	const { users, getAssignedUsers } = useUsers();
 	const [searchQuery, setSearchQuery] = useState("");
 	const [statusFilter] = useState("all");
@@ -172,17 +178,18 @@ export function ConciergeBookings() {
 
 		try {
 			if (newBookings.length === 1) {
-				// Find item name
 				const item = conciergeItems.find(
 					(i) => i.id === newBookings[0].conciergeItemId,
 				);
 				const itemName = item ? item.name : newBookings[0].conciergeItemId;
+				const amount = item ? Number(item.price) || 0 : 0;
 
-				// Create single booking using PA-specific endpoint (OTP required)
 				await api.post("/bookings/pa-create", {
 					userId: selectedUserId,
 					otpCode: otpCode.trim(),
 					type: "CONCIERGE",
+					totalAmount: amount,
+					serviceFee: 0,
 					specialRequests:
 						`Concierge Item: ${itemName}. Notes: ${newBookings[0].notes}`.substring(
 							0,
@@ -191,12 +198,14 @@ export function ConciergeBookings() {
 				});
 				customToast.success("Booking created successfully");
 			} else {
-				// Create bulk bookings (OTP required)
 				const mappedBookings = newBookings.map((b) => {
 					const item = conciergeItems.find((i) => i.id === b.conciergeItemId);
 					const itemName = item ? item.name : b.conciergeItemId;
+					const amount = item ? Number(item.price) || 0 : 0;
 					return {
 						type: "CONCIERGE",
+						totalAmount: amount,
+						serviceFee: 0,
 						specialRequests:
 							`Concierge Item: ${itemName}. Notes: ${b.notes}`.substring(0, 950),
 					};
@@ -211,7 +220,7 @@ export function ConciergeBookings() {
 			}
 
 			setCreateOpen(false);
-			getBookings({ type: "CONCIERGE" });
+			await getBookings({ type: "CONCIERGE" });
 			// Reset form
 			setSelectedUserId("");
 			setOtpCode("");
@@ -227,13 +236,17 @@ export function ConciergeBookings() {
 
 	const handleStatusChange = async (id: string, status: string) => {
 		try {
+			let updated;
 			if (status === "CONFIRMED") {
-				await confirmBooking(id);
+				updated = await confirmBooking(id);
 			} else {
-				await updateBookingStatus(id, status);
+				updated = await updateBookingStatus(id, status);
+			}
+			if (updated) {
+				updateBookingInList(updated as Parameters<typeof updateBookingInList>[0]);
 			}
 			customToast.success(`Booking status updated to ${status}`);
-			getBookings();
+			await getBookings();
 		} catch {
 			customToast.error("Failed to update booking status");
 		}
@@ -526,7 +539,10 @@ export function ConciergeBookings() {
 											<TableCell>{booking.type}</TableCell>
 											<TableCell>
 												{booking.currency}{" "}
-												{parseFloat(booking.totalAmount).toLocaleString()}
+												{Number(booking.totalAmount) != null &&
+												!Number.isNaN(Number(booking.totalAmount))
+													? Number(booking.totalAmount).toLocaleString()
+													: "—"}
 											</TableCell>
 											<TableCell>{getStatusBadge(booking.status)}</TableCell>
 											<TableCell>
@@ -612,7 +628,10 @@ export function ConciergeBookings() {
 									</h4>
 									<p className="text-sm font-medium">
 										{selectedBooking.currency}{" "}
-										{parseFloat(selectedBooking.totalAmount).toLocaleString()}
+										{Number(selectedBooking.totalAmount) != null &&
+										!Number.isNaN(Number(selectedBooking.totalAmount))
+											? Number(selectedBooking.totalAmount).toLocaleString()
+											: "—"}
 									</p>
 								</div>
 								<div>

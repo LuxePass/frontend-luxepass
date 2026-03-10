@@ -166,8 +166,14 @@ function PropertySearchCommand({
 }
 
 export function Bookings() {
-	const { bookings, loading, getBookings, updateBookingStatus, confirmBooking } =
-		useBookings();
+	const {
+		bookings,
+		loading,
+		getBookings,
+		updateBookingStatus,
+		confirmBooking,
+		updateBookingInList,
+	} = useBookings();
 	const { users, getAssignedUsers } = useUsers();
 	const { listings, getListings } = useListings();
 	const [searchQuery, setSearchQuery] = useState("");
@@ -315,13 +321,17 @@ export function Bookings() {
 
 	const handleStatusChange = async (id: string, status: string) => {
 		try {
+			let updated;
 			if (status === "CONFIRMED") {
-				await confirmBooking(id);
+				updated = await confirmBooking(id);
 			} else {
-				await updateBookingStatus(id, status);
+				updated = await updateBookingStatus(id, status);
+			}
+			if (updated) {
+				updateBookingInList(updated as Parameters<typeof updateBookingInList>[0]);
 			}
 			customToast.success(`Booking status updated to ${status}`);
-			getBookings();
+			await getBookings();
 		} catch {
 			customToast.error("Failed to update booking status");
 		}
@@ -619,7 +629,9 @@ export function Bookings() {
 											<TableCell>{booking.type}</TableCell>
 											<TableCell>
 												{booking.currency}{" "}
-												{parseFloat(booking.totalAmount).toLocaleString()}
+												{Number(booking.totalAmount) != null && !Number.isNaN(Number(booking.totalAmount))
+													? Number(booking.totalAmount).toLocaleString()
+													: "—"}
 											</TableCell>
 											<TableCell>{getStatusBadge(booking.status)}</TableCell>
 											<TableCell>
@@ -705,7 +717,10 @@ export function Bookings() {
 									</h4>
 									<p className="text-sm font-medium">
 										{selectedBooking.currency}{" "}
-										{parseFloat(selectedBooking.totalAmount).toLocaleString()}
+										{Number(selectedBooking.totalAmount) != null &&
+										!Number.isNaN(Number(selectedBooking.totalAmount))
+											? Number(selectedBooking.totalAmount).toLocaleString()
+											: "—"}
 									</p>
 								</div>
 								<div>

@@ -295,10 +295,13 @@ export function LiveChat() {
 			setError(null);
 
 			try {
-				const url = new URL(`${whatsappBackendBaseUrl}/conversations`);
-				if (user?.id) {
-					url.searchParams.append("paId", user.id);
+				if (!user?.id) {
+					setError("You must be signed in to view your assigned conversations.");
+					return;
 				}
+
+				const url = new URL(`${whatsappBackendBaseUrl}/conversations`);
+				url.searchParams.append("paId", user.id);
 
 				const response = await fetch(url.toString(), {
 					headers: backendHeaders,
@@ -456,6 +459,7 @@ export function LiveChat() {
 			normalizeTimestamp,
 			whatsappBackendBaseUrl,
 			selectedConversation,
+			user?.id,
 		],
 	);
 
@@ -465,19 +469,21 @@ export function LiveChat() {
 	const fetchMessages = useCallback(
 		async (conversationId: string, silent = false) => {
 			if (!conversationId) return;
+			if (!user?.id) return;
 
 			if (!silent) {
 				setIsLoadingMessages(true);
 			}
 
 			try {
-				const response = await fetch(
+				const url = new URL(
 					`${whatsappBackendBaseUrl}/conversations/${conversationId}/messages`,
-					{
-						headers: backendHeaders,
-						method: "GET",
-					},
 				);
+				url.searchParams.set("paId", user.id);
+				const response = await fetch(url.toString(), {
+					headers: backendHeaders,
+					method: "GET",
+				});
 
 				if (!response.ok) {
 					const body = await response.json().catch(() => ({}));
@@ -672,7 +678,7 @@ export function LiveChat() {
 				}
 			}
 		},
-		[backendHeaders, normalizeTimestamp, whatsappBackendBaseUrl],
+		[backendHeaders, normalizeTimestamp, whatsappBackendBaseUrl, user?.id],
 	);
 
 	/**
@@ -725,10 +731,19 @@ export function LiveChat() {
 				);
 			}
 
+			if (!user?.id) {
+				customToast.error({
+					title: "Error",
+					description: "You must be signed in to send messages.",
+				});
+				return;
+			}
+
 			const payload = {
 				to: normalizedPhone,
 				type: "text",
 				message: inputMessage.trim(),
+				paId: user.id,
 			};
 
 			const response = await fetch(`${whatsappBackendBaseUrl}/messages`, {
@@ -1001,13 +1016,14 @@ export function LiveChat() {
 		if (selectedConversation) {
 			void fetchMessages(selectedConversation, false);
 			// Mark conversation as read when viewing
-			void fetch(
+			const readUrl = new URL(
 				`${whatsappBackendBaseUrl}/conversations/${selectedConversation}/read`,
-				{
-					method: "POST",
-					headers: backendHeaders,
-				},
-			).catch((err) => console.error("Error marking as read:", err));
+			);
+			if (user?.id) readUrl.searchParams.set("paId", user.id);
+			void fetch(readUrl.toString(), {
+				method: "POST",
+				headers: backendHeaders,
+			}).catch((err) => console.error("Error marking as read:", err));
 		}
 	}, [selectedConversation]); // eslint-disable-line react-hooks/exhaustive-deps
 

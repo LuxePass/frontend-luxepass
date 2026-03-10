@@ -29,22 +29,25 @@ export interface DashboardStats {
 	};
 }
 
+type BookingsApiData = {
+	data: Booking[];
+	meta: {
+		totalItems: number;
+		page: number;
+		limit: number;
+		hasMore: boolean;
+		totalPages: number;
+	};
+};
+
 export function useBookings() {
 	const {
-		data: bookingsData, // Renamed to avoid conflict
-		loading: bookingsLoading, // Renamed to avoid conflict
-		error: bookingsError, // Renamed to avoid conflict
+		data: bookingsData,
+		loading: bookingsLoading,
+		error: bookingsError,
 		request,
-	} = useApi<{
-		data: Booking[];
-		meta: {
-			totalItems: number;
-			page: number;
-			limit: number;
-			hasMore: boolean;
-			totalPages: number;
-		};
-	}>();
+		setState,
+	} = useApi<BookingsApiData>();
 
 	// New state for dashboard stats
 	const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(
@@ -114,8 +117,27 @@ export function useBookings() {
 
 	const confirmBooking = useCallback(async (id: string) => {
 		const response = await api.patch(`/bookings/${id}/confirm`);
-		return response.data?.data;
+		return response.data?.data as Booking | undefined;
 	}, []);
+
+	/** Update a single booking in the local list (e.g. after status change) so UI updates immediately */
+	const updateBookingInList = useCallback(
+		(updated: Booking) => {
+			setState((prev) => {
+				if (!prev?.data) return prev;
+				const current = prev.data as BookingsApiData | Booking[];
+				const list = Array.isArray(current) ? current : (current?.data ?? []);
+				const nextList = list.map((b) =>
+					b.id === updated.id ? { ...b, ...updated } : b,
+				);
+				const nextData: BookingsApiData = Array.isArray(current)
+					? { data: nextList, meta: { totalItems: nextList.length, page: 1, limit: nextList.length, hasMore: false, totalPages: 1 } }
+					: { ...(current as BookingsApiData), data: nextList };
+				return { ...prev, data: nextData };
+			});
+		},
+		[setState],
+	);
 
 	// New function to get dashboard stats
 	const getDashboardStats = useCallback(async () => {
@@ -143,16 +165,21 @@ export function useBookings() {
 		}
 	}, []);
 
+	// Support both shapes: { data: Booking[], meta } or array (from API/interceptor)
+	const bookingsList = Array.isArray(bookingsData)
+		? bookingsData
+		: (bookingsData?.data ?? []);
+
 	return {
-		bookings: bookingsData?.data || [],
-		meta: bookingsData?.meta,
+		bookings: bookingsList,
+		meta: Array.isArray(bookingsData) ? undefined : bookingsData?.meta,
 		loading: bookingsLoading,
 		error: bookingsError,
 		getBookings,
 		getBookingById,
 		updateBookingStatus,
 		confirmBooking,
-		// Expose new dashboard stats and function
+		updateBookingInList,
 		dashboardStats,
 		dashboardStatsLoading,
 		dashboardStatsError,
