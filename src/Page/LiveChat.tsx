@@ -20,9 +20,24 @@ import {
 	RefreshCw,
 	UserPlus,
 	Archive,
+	Gift,
+	Building2,
+	Tag,
 } from "lucide-react";
 import { cn } from "../utils";
 import { customToast } from "./CustomToast";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "../components/ui/dropdown-menu";
+import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+} from "../components/ui/dialog";
 
 interface ChatMessage {
 	id: string;
@@ -78,6 +93,15 @@ export function LiveChat() {
 	const [lastMessageFetch, setLastMessageFetch] = useState<
 		Record<string, number>
 	>({});
+	const [offerListingOpen, setOfferListingOpen] = useState(false);
+	const [offerConciergeOpen, setOfferConciergeOpen] = useState(false);
+	const [listingsForOffer, setListingsForOffer] = useState<
+		Array<{ id: string; name: string; propertyType?: string; pricePerNight?: number; currency?: string }>
+	>([]);
+	const [conciergeForOffer, setConciergeForOffer] = useState<
+		Array<{ id: string; name: string; category?: string; price?: string; currency?: string }>
+	>([]);
+	const [sendingOffer, setSendingOffer] = useState(false);
 
 	const { user } = useAuth();
 
@@ -957,6 +981,83 @@ export function LiveChat() {
 		setInputMessage("");
 	};
 
+	/** Fetch listings when opening Send listing dialog */
+	useEffect(() => {
+		if (!offerListingOpen) return;
+		let cancelled = false;
+		(async () => {
+			try {
+				const res = await api.get("/listings", { params: { limit: 50 } });
+				const raw = res.data?.data ?? res.data;
+				const list = Array.isArray(raw) ? raw : raw?.data ?? raw?.listings ?? [];
+				if (!cancelled) setListingsForOffer(list);
+			} catch {
+				if (!cancelled) setListingsForOffer([]);
+			}
+		})();
+		return () => { cancelled = true; };
+	}, [offerListingOpen]);
+
+	/** Fetch concierge items when opening Send concierge dialog */
+	useEffect(() => {
+		if (!offerConciergeOpen) return;
+		let cancelled = false;
+		(async () => {
+			try {
+				const res = await api.get("/concierge");
+				const raw = res.data?.data ?? res.data;
+				const list = Array.isArray(raw) ? raw : raw?.data ?? res.data?.data?.data ?? [];
+				if (!cancelled) setConciergeForOffer(list);
+			} catch {
+				if (!cancelled) setConciergeForOffer([]);
+			}
+		})();
+		return () => { cancelled = true; };
+	}, [offerConciergeOpen]);
+
+	const sendOffer = useCallback(
+		async (type: "listing" | "concierge", id: string) => {
+			if (!selectedConversation || !user?.id) return;
+			const conv = conversations.find((c) => c.id === selectedConversation);
+			if (!conv?.clientPhone) return;
+			const to = conv.clientPhone.replace(/\D/g, "");
+			setSendingOffer(true);
+			try {
+				const payload: Record<string, string | number> = {
+					to,
+					type,
+					paId: user.id,
+				};
+				if (type === "listing") payload.listingId = id;
+				else payload.conciergeItemId = id;
+				const response = await fetch(`${whatsappBackendBaseUrl}/messages`, {
+					method: "POST",
+					headers: backendHeaders,
+					body: JSON.stringify(payload),
+				});
+				if (!response.ok) {
+					const body = await response.json().catch(() => ({}));
+					throw new Error(body?.error?.message ?? body?.error ?? "Failed to send offer");
+				}
+				customToast.success({
+					title: "Offer sent",
+					description: type === "listing" ? "Listing sent via WhatsApp." : "Concierge offer sent via WhatsApp.",
+				});
+				if (type === "listing") setOfferListingOpen(false);
+				else setOfferConciergeOpen(false);
+				void fetchMessages(selectedConversation, true);
+			} catch (err) {
+				customToast.error({
+					title: "Error",
+					description: err instanceof Error ? err.message : "Failed to send offer",
+				});
+			} finally {
+				setSendingOffer(false);
+			}
+		},
+		[selectedConversation, conversations, user?.id, whatsappBackendBaseUrl, backendHeaders, fetchMessages],
+	);
+
 	// Initial fetch on mount
 	useEffect(() => {
 		void fetchConversations(false);
@@ -1073,11 +1174,11 @@ export function LiveChat() {
 	};
 
 	return (
-		<Card className="h-full flex flex-col lg:flex-row bg-white dark:bg-zinc-900/50 border-zinc-200 dark:border-zinc-800 overflow-hidden">
+		<Card className="flex-1 min-h-0 flex flex-col lg:flex-row bg-white dark:bg-zinc-900/50 border-zinc-200 dark:border-zinc-800 overflow-hidden">
 			{/* Conversations List */}
 			<div
 				className={cn(
-					"w-full lg:w-80 border-b lg:border-b-0 lg:border-r border-zinc-200 dark:border-zinc-800 flex flex-col shrink-0 lg:h-full",
+					"w-full lg:w-80 border-b lg:border-b-0 lg:border-r border-zinc-200 dark:border-zinc-800 flex flex-col shrink-0 min-h-[200px] lg:min-h-0 lg:h-full",
 					showChat && "hidden lg:flex",
 				)}>
 				<div className="p-3 lg:p-4 border-b border-zinc-200 dark:border-zinc-800 shrink-0">
@@ -1161,7 +1262,7 @@ export function LiveChat() {
 			{/* Chat Area */}
 			<div
 				className={cn(
-					"flex-1 flex flex-col min-h-0 h-full lg:h-auto",
+					"flex-1 flex flex-col min-h-0 min-w-0",
 					!showChat && "hidden lg:flex",
 				)}>
 				{selectedConv ?
@@ -1204,11 +1305,11 @@ export function LiveChat() {
 									</div>
 								</div>
 							</div>
-							<div className="flex items-center gap-1 shrink-0">
+							<div className="flex items-center gap-1 shrink-0 flex-wrap justify-end">
 								<Button
 									variant="ghost"
 									size="sm"
-									className="size-8 p-0"
+									className="size-8 p-0 shrink-0"
 									onClick={() =>
 										selectedConversation &&
 										void fetchMessages(selectedConversation, false)
@@ -1219,10 +1320,34 @@ export function LiveChat() {
 										className={cn("size-4", isLoadingMessages && "animate-spin")}
 									/>
 								</Button>
+								{/* Send offer: Listing or Concierge */}
+								<DropdownMenu>
+									<DropdownMenuTrigger asChild>
+										<Button
+											variant="outline"
+											size="sm"
+											className="h-8 px-3 text-xs gap-2 shrink-0"
+											disabled={sendingOffer}>
+											<Gift className="size-3.5" />
+											<span className="hidden sm:inline">Send offer</span>
+										</Button>
+									</DropdownMenuTrigger>
+									<DropdownMenuContent align="end">
+										<DropdownMenuItem onClick={() => setOfferListingOpen(true)}>
+											<Building2 className="size-3.5 mr-2" />
+											Send listing
+										</DropdownMenuItem>
+										<DropdownMenuItem onClick={() => setOfferConciergeOpen(true)}>
+											<Tag className="size-3.5 mr-2" />
+											Send concierge
+										</DropdownMenuItem>
+									</DropdownMenuContent>
+								</DropdownMenu>
+								{/* Desktop: show actions as buttons */}
 								<Button
 									variant="outline"
 									size="sm"
-									className="hidden lg:flex h-8 px-3 text-xs gap-2"
+									className="hidden lg:flex h-8 px-3 text-xs gap-2 shrink-0"
 									onClick={handleAssignToMe}>
 									<UserPlus className="size-3.5" />
 									Assign to Me
@@ -1230,7 +1355,7 @@ export function LiveChat() {
 								<Button
 									variant="outline"
 									size="sm"
-									className="hidden lg:flex h-8 px-3 text-xs gap-2"
+									className="hidden lg:flex h-8 px-3 text-xs gap-2 shrink-0"
 									onClick={handleResolve}>
 									<Archive className="size-3.5" />
 									Resolve
@@ -1238,15 +1363,42 @@ export function LiveChat() {
 								<Button
 									variant="outline"
 									size="sm"
-									className="hidden lg:flex h-8 px-3 text-xs bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950/50 transition-colors"
+									className="hidden lg:flex h-8 px-3 text-xs shrink-0 bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950/50 transition-colors"
 									onClick={handleCloseChat}
 									title="End live chat session and return user to menu">
 									End Live Chat
 								</Button>
+								{/* Mobile: actions in dropdown */}
+								<DropdownMenu>
+									<DropdownMenuTrigger asChild>
+										<Button
+											variant="outline"
+											size="sm"
+											className="lg:hidden size-8 p-0 shrink-0"
+											title="Actions">
+											<MoreVertical className="size-4" />
+										</Button>
+									</DropdownMenuTrigger>
+									<DropdownMenuContent align="end">
+										<DropdownMenuItem onClick={handleAssignToMe}>
+											<UserPlus className="size-3.5 mr-2" />
+											Assign to Me
+										</DropdownMenuItem>
+										<DropdownMenuItem onClick={handleResolve}>
+											<Archive className="size-3.5 mr-2" />
+											Resolve
+										</DropdownMenuItem>
+										<DropdownMenuItem
+											onClick={handleCloseChat}
+											className="text-red-600 dark:text-red-400">
+											End Live Chat
+										</DropdownMenuItem>
+									</DropdownMenuContent>
+								</DropdownMenu>
 								<Button
 									variant="ghost"
 									size="sm"
-									className="hidden lg:flex size-8 p-0"
+									className="hidden lg:flex size-8 p-0 shrink-0"
 									onClick={() => setShowChat(false)}
 									title="Close chat window (doesn't end session)">
 									<X className="size-4" />
@@ -1374,7 +1526,7 @@ export function LiveChat() {
 							</div>
 						)}
 					</>
-				:	<div className="flex-1 flex items-center justify-center p-8">
+				:	<div className="flex-1 flex items-center justify-center p-8 min-h-[280px]">
 						<div className="text-center">
 							<MessageCircle className="size-12 mx-auto mb-3 text-zinc-300 dark:text-zinc-700" />
 							<p className="text-zinc-400">Select a conversation to start chatting</p>
@@ -1382,6 +1534,72 @@ export function LiveChat() {
 					</div>
 				}
 			</div>
+
+			{/* Send listing offer dialog */}
+			<Dialog open={offerListingOpen} onOpenChange={setOfferListingOpen}>
+				<DialogContent className="max-w-md max-h-[80vh] flex flex-col">
+					<DialogHeader>
+						<DialogTitle>Send listing to client</DialogTitle>
+					</DialogHeader>
+					<ScrollArea className="flex-1 min-h-0 -mx-2 px-2">
+						<div className="space-y-1 py-2">
+							{listingsForOffer.length === 0 && (
+								<p className="text-sm text-zinc-500 py-4">No listings available.</p>
+							)}
+							{listingsForOffer.map((l) => {
+								const sym = l.currency === "USD" ? "$" : "₦";
+								const price = `${sym}${Number(l.pricePerNight || 0).toLocaleString()}/night`;
+								return (
+									<button
+										key={l.id}
+										type="button"
+										disabled={sendingOffer}
+										onClick={() => void sendOffer("listing", l.id)}
+										className="w-full text-left rounded-lg p-3 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800/80 transition-colors">
+										<p className="text-sm font-medium truncate">{l.name || "Listing"}</p>
+										<p className="text-xs text-zinc-500">
+											{l.propertyType ?? ""} · {price}
+										</p>
+									</button>
+								);
+							})}
+						</div>
+					</ScrollArea>
+				</DialogContent>
+			</Dialog>
+
+			{/* Send concierge offer dialog */}
+			<Dialog open={offerConciergeOpen} onOpenChange={setOfferConciergeOpen}>
+				<DialogContent className="max-w-md max-h-[80vh] flex flex-col">
+					<DialogHeader>
+						<DialogTitle>Send concierge offer to client</DialogTitle>
+					</DialogHeader>
+					<ScrollArea className="flex-1 min-h-0 -mx-2 px-2">
+						<div className="space-y-1 py-2">
+							{conciergeForOffer.length === 0 && (
+								<p className="text-sm text-zinc-500 py-4">No concierge items available.</p>
+							)}
+							{conciergeForOffer.map((item) => {
+								const sym = item.currency === "USD" ? "$" : "₦";
+								const price = `${sym}${Number(item.price || 0).toLocaleString()}`;
+								return (
+									<button
+										key={item.id}
+										type="button"
+										disabled={sendingOffer}
+										onClick={() => void sendOffer("concierge", item.id)}
+										className="w-full text-left rounded-lg p-3 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800/80 transition-colors">
+										<p className="text-sm font-medium truncate">{item.name || "Concierge"}</p>
+										<p className="text-xs text-zinc-500">
+											{item.category ?? ""} · {price}
+										</p>
+									</button>
+								);
+							})}
+						</div>
+					</ScrollArea>
+				</DialogContent>
+			</Dialog>
 		</Card>
 	);
 }
