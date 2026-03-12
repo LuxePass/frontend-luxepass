@@ -16,7 +16,6 @@ import {
 	MoreVertical,
 	CheckCheck,
 	Clock,
-	X,
 	RefreshCw,
 	UserPlus,
 	Archive,
@@ -24,6 +23,8 @@ import {
 	Tag,
 	UserRoundCog,
 	Sparkles,
+	Search,
+	Image as ImageIcon,
 } from "lucide-react";
 import { cn } from "../utils";
 import { customToast } from "./CustomToast";
@@ -84,7 +85,6 @@ export function LiveChat() {
 		string | null
 	>(null);
 	const [inputMessage, setInputMessage] = useState("");
-	const [showChat, setShowChat] = useState(false);
 	const [isLoadingConversations, setIsLoadingConversations] = useState(false);
 	const [isLoadingMessages, setIsLoadingMessages] = useState(false);
 	const [isSending, setIsSending] = useState(false);
@@ -95,11 +95,14 @@ export function LiveChat() {
 	const [offerListingOpen, setOfferListingOpen] = useState(false);
 	const [offerConciergeOpen, setOfferConciergeOpen] = useState(false);
 	const [listingsForOffer, setListingsForOffer] = useState<
-		Array<{ id: string; name: string; propertyType?: string; pricePerNight?: number; currency?: string }>
+		Array<{ id: string; name: string; propertyType?: string; pricePerNight?: number; currency?: string; city?: string; media?: Array<{ url: string }> }>
 	>([]);
 	const [conciergeForOffer, setConciergeForOffer] = useState<
-		Array<{ id: string; name: string; category?: string; price?: string; currency?: string }>
+		Array<{ id: string; name: string; category?: string; price?: string; currency?: string; mediaUrl?: string }>
 	>([]);
+	const [listingSearch, setListingSearch] = useState("");
+	const [conciergeSearch, setConciergeSearch] = useState("");
+	const [transferSearch, setTransferSearch] = useState("");
 	const [sendingOffer, setSendingOffer] = useState(false);
 	const [transferOpen, setTransferOpen] = useState(false);
 	const [otherPAs, setOtherPAs] = useState<Array<{ id: string; name: string; email?: string }>>([]);
@@ -960,8 +963,6 @@ export function LiveChat() {
 	const handleSelectConversation = useCallback(
 		(conversationId: string) => {
 			setSelectedConversation(conversationId);
-			setShowChat(true);
-			// Fetch messages immediately when conversation is selected
 			void fetchMessages(conversationId, false);
 		},
 		[fetchMessages],
@@ -1008,16 +1009,19 @@ export function LiveChat() {
 		setInputMessage("");
 	};
 
-	/** Fetch listings when opening Send listing dialog */
+	/** Fetch listings when opening Send listing dialog (backend returns { data: { data: array, meta } }) */
 	useEffect(() => {
 		if (!offerListingOpen) return;
 		let cancelled = false;
+		setListingSearch("");
 		(async () => {
 			try {
-				const res = await api.get("/listings", { params: { limit: 50 } });
-				const raw = res.data?.data ?? res.data;
-				const list = Array.isArray(raw) ? raw : raw?.data ?? raw?.listings ?? [];
-				if (!cancelled) setListingsForOffer(list);
+				const res = await api.get("/listings", { params: { limit: 100 } });
+				const raw = res.data?.data;
+				const list = Array.isArray(raw)
+					? raw
+					: (raw && typeof raw === "object" && "data" in raw ? (raw as { data: unknown[] }).data : []) ?? [];
+				if (!cancelled) setListingsForOffer(Array.isArray(list) ? list : []);
 			} catch {
 				if (!cancelled) setListingsForOffer([]);
 			}
@@ -1025,16 +1029,19 @@ export function LiveChat() {
 		return () => { cancelled = true; };
 	}, [offerListingOpen]);
 
-	/** Fetch concierge items when opening Send concierge dialog */
+	/** Fetch concierge items when opening Send concierge dialog (backend returns { data: { data: array, meta } }) */
 	useEffect(() => {
 		if (!offerConciergeOpen) return;
 		let cancelled = false;
+		setConciergeSearch("");
 		(async () => {
 			try {
 				const res = await api.get("/concierge");
-				const raw = res.data?.data ?? res.data;
-				const list = Array.isArray(raw) ? raw : raw?.data ?? res.data?.data?.data ?? [];
-				if (!cancelled) setConciergeForOffer(list);
+				const raw = res.data?.data;
+				const list = Array.isArray(raw)
+					? raw
+					: (raw && typeof raw === "object" && "data" in raw ? (raw as { data: unknown[] }).data : []) ?? [];
+				if (!cancelled) setConciergeForOffer(Array.isArray(list) ? list : []);
 			} catch {
 				if (!cancelled) setConciergeForOffer([]);
 			}
@@ -1089,6 +1096,7 @@ export function LiveChat() {
 	useEffect(() => {
 		if (!transferOpen || !user?.id) return;
 		let cancelled = false;
+		setTransferSearch("");
 		(async () => {
 			try {
 				const res = await api.get("/pas", { params: { limit: 100 } });
@@ -1137,7 +1145,6 @@ export function LiveChat() {
 				customToast.success("Client transferred successfully");
 				setTransferOpen(false);
 				setSelectedConversation(null);
-				setShowChat(false);
 				void fetchConversations(false);
 			} catch (err) {
 				customToast.error(err instanceof Error ? err.message : "Failed to transfer");
@@ -1264,28 +1271,19 @@ export function LiveChat() {
 	};
 
 	return (
-		<Card className="flex-1 min-h-0 flex flex-col lg:flex-row bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-sm">
-			{/* Left: Assigned clients list */}
-			<div
-				className={cn(
-					"w-full lg:w-80 xl:w-96 border-b lg:border-b-0 lg:border-r border-zinc-200 dark:border-zinc-800 flex flex-col shrink-0 min-h-[220px] lg:min-h-0 bg-zinc-50/50 dark:bg-zinc-900/50",
-					showChat && "hidden lg:flex",
-				)}>
+		<Card className="flex-1 min-h-0 flex flex-row bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-sm">
+			{/* Left panel: Conversation list (fixed width, always visible) */}
+			<div className="w-[280px] sm:w-[320px] flex-shrink-0 flex flex-col min-h-0 border-r border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
 				<div className="p-4 border-b border-zinc-200 dark:border-zinc-800 shrink-0">
 					<div className="flex items-center justify-between gap-2">
-						<div className="flex items-center gap-2">
-							<div className="rounded-lg bg-green-500/10 p-2">
-								<MessageCircle className="size-5 text-green-600 dark:text-green-400" />
-							</div>
-							<div>
-								<h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-									Live Chat
-								</h2>
-								<p className="text-xs text-zinc-500 dark:text-zinc-400">
-									Assigned to you · {conversations.length} conversation
-									{conversations.length !== 1 ? "s" : ""}
-								</p>
-							</div>
+						<div>
+							<h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+								Live Chat
+							</h2>
+							<p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+								Assigned to you · {conversations.length} conversation
+								{conversations.length !== 1 ? "s" : ""}
+							</p>
 						</div>
 						<Button
 							variant="outline"
@@ -1293,21 +1291,16 @@ export function LiveChat() {
 							className="shrink-0"
 							onClick={handleRefresh}
 							disabled={isRefreshing}
-							title="Refresh">
+							title="Refresh conversations">
 							<RefreshCw className={cn("size-4", isRefreshing && "animate-spin")} />
 						</Button>
 					</div>
-					{conversations.some((c) => c.unreadCount > 0) && (
-						<p className="text-xs text-green-600 dark:text-green-400 mt-1.5">
-							{conversations.filter((c) => c.unreadCount > 0).length} unread
-						</p>
-					)}
 				</div>
 
 				<ScrollArea className="flex-1 min-h-0">
-					<div className="p-2 space-y-1">
+					<div className="p-2 space-y-0.5">
 						{error && (
-							<div className="text-xs text-red-600 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded-lg p-3">
+							<div className="text-xs text-red-600 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded-lg p-3 mx-2 mb-2">
 								{error}
 							</div>
 						)}
@@ -1317,71 +1310,72 @@ export function LiveChat() {
 						{!isLoadingConversations && conversations.length === 0 && (
 							<div className="py-8 px-4 text-center">
 								<UserCircle className="size-12 mx-auto text-zinc-300 dark:text-zinc-600 mb-2" />
-								<p className="text-sm text-zinc-500">No clients assigned yet</p>
+								<p className="text-sm text-zinc-500">No conversations yet</p>
 								<p className="text-xs text-zinc-400 mt-1">
-									Assign a client from the queue or wait for new requests
+									Conversations assigned to you will appear here
 								</p>
 							</div>
 						)}
-						{conversations.map((conv) => (
-							<button
-								key={conv.id}
-								onClick={() => handleSelectConversation(conv.id)}
-								className={cn(
-									"w-full p-3 rounded-xl text-left transition-all hover:bg-white dark:hover:bg-zinc-800/80 border border-transparent",
-									selectedConversation === conv.id &&
-										"bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 shadow-sm",
-								)}>
-								<div className="flex items-center gap-3">
-									<Avatar className="size-11 shrink-0 ring-2 ring-zinc-200 dark:ring-zinc-700">
-										<AvatarFallback className="bg-gradient-to-br from-green-500 to-emerald-600 text-white text-sm font-medium">
-											{getInitials(conv.clientName)}
-										</AvatarFallback>
-									</Avatar>
-									<div className="flex-1 min-w-0">
-										<div className="flex items-center justify-between gap-2">
-											<span className="text-sm font-medium truncate text-zinc-900 dark:text-zinc-100">
-												{conv.clientName}
-											</span>
-											{conv.unreadCount > 0 && (
-												<Badge className="bg-green-500 text-white text-xs shrink-0">
-													{conv.unreadCount}
-												</Badge>
-											)}
+						{conversations.map((conv) => {
+							const isSelected = selectedConversation === conv.id;
+							const hasUnread = (conv.unreadCount ?? 0) > 0;
+							return (
+								<button
+									key={conv.id}
+									onClick={() => handleSelectConversation(conv.id)}
+									className={cn(
+										"w-full p-3 rounded-lg text-left transition-colors border border-transparent",
+										isSelected
+											? "bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 shadow-sm"
+											: "hover:bg-white/80 dark:hover:bg-zinc-800/60",
+									)}>
+									<div className="flex items-center gap-3">
+										<div className="relative shrink-0">
+											<Avatar className="size-10 ring-2 ring-zinc-200 dark:ring-zinc-700">
+												<AvatarFallback className="bg-gradient-to-br from-green-500 to-emerald-600 text-white text-sm font-medium">
+													{getInitials(conv.clientName)}
+												</AvatarFallback>
+											</Avatar>
+											{/* Status indicator: green when unread, gray when read */}
+											<span
+												className={cn(
+													"absolute bottom-0 right-0 size-2.5 rounded-full border-2 border-zinc-50 dark:border-zinc-900",
+													hasUnread ? "bg-green-500" : "bg-zinc-400 dark:bg-zinc-500",
+												)}
+												title={hasUnread ? "Unread" : "Read"}
+											/>
 										</div>
-										<p className="text-xs text-zinc-500 truncate mt-0.5">
-											{conv.lastMessage || "No messages yet"}
-										</p>
-										<span className="text-xs text-zinc-400">{conv.lastMessageTime}</span>
+										<div className="flex-1 min-w-0">
+											<div className="flex items-center justify-between gap-2">
+												<span className="text-sm font-medium truncate text-zinc-900 dark:text-zinc-100">
+													{conv.clientName}
+												</span>
+												{hasUnread && (
+													<Badge className="bg-green-500 text-white text-xs shrink-0">
+														{conv.unreadCount}
+													</Badge>
+												)}
+											</div>
+											<p className="text-xs text-zinc-500 dark:text-zinc-400 truncate mt-0.5">
+												{conv.lastMessage || "No messages yet"}
+											</p>
+											<span className="text-xs text-zinc-400">{conv.lastMessageTime}</span>
+										</div>
 									</div>
-								</div>
-							</button>
-						))}
+								</button>
+							);
+						})}
 					</div>
 				</ScrollArea>
 			</div>
 
-			{/* Right: Chat with selected client */}
-			<div
-				className={cn(
-					"flex-1 flex flex-col min-h-0 min-w-0 bg-white dark:bg-zinc-950",
-					!showChat && "hidden lg:flex",
-				)}>
+			{/* Right panel: Active chat window (takes remaining space, always visible) */}
+			<div className="flex-1 flex flex-col min-h-0 min-w-0 bg-white dark:bg-zinc-950">
 				{selectedConv ?
 					<>
-						{/* Client header */}
+						{/* Chat header: avatar, name, phone, actions */}
 						<div className="shrink-0 border-b border-zinc-200 dark:border-zinc-800">
 							<div className="p-4 flex items-center gap-3">
-								<Button
-									variant="ghost"
-									size="icon"
-									className="lg:hidden shrink-0"
-									onClick={() => setShowChat(false)}
-									aria-label="Back to list">
-									<svg className="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-										<path strokeLinecap="round" strokeLinejoin="round" d="m15 18-6-6 6-6" />
-									</svg>
-								</Button>
 								<Avatar className="size-12 shrink-0 ring-2 ring-zinc-200 dark:ring-zinc-700">
 									<AvatarFallback className="bg-gradient-to-br from-green-500 to-emerald-600 text-white font-medium">
 										{getInitials(selectedConv.clientName)}
@@ -1396,14 +1390,6 @@ export function LiveChat() {
 										<span className="truncate font-mono">{selectedConv.clientPhone ?? "—"}</span>
 									</div>
 								</div>
-								<Button
-									variant="ghost"
-									size="icon"
-									className="lg:hidden shrink-0"
-									onClick={() => setShowChat(false)}
-									title="Close">
-									<X className="size-5" />
-								</Button>
 							</div>
 
 							{/* Action bar: Chat, offers, assign, transfer, resolve, end */}
@@ -1477,7 +1463,7 @@ export function LiveChat() {
 								<div className="hidden lg:block flex-1" />
 								<DropdownMenu>
 									<DropdownMenuTrigger asChild>
-										<Button variant="outline" size="sm" className="lg:hidden h-8 w-8 p-0" title="More actions">
+										<Button variant="outline" size="sm" className="h-8 w-8 p-0" title="More actions">
 											<MoreVertical className="size-4" />
 										</Button>
 									</DropdownMenuTrigger>
@@ -1510,8 +1496,8 @@ export function LiveChat() {
 							</div>
 						</div>
 
-						{/* Messages */}
-						<ScrollArea className="flex-1 p-4 min-h-0">
+						{/* Scrollable messages area (takes most vertical space) */}
+						<ScrollArea className="flex-1 min-h-0 p-4">
 							<div className="space-y-4 max-w-3xl mx-auto">
 								{isLoadingMessages && !isRefreshing && (
 									<p className="text-sm text-zinc-500 py-4">Fetching messages…</p>
@@ -1653,16 +1639,16 @@ export function LiveChat() {
 							</div>
 						)}
 					</>
-				:	<div className="flex-1 flex items-center justify-center p-8 min-h-[320px] bg-zinc-50/30 dark:bg-zinc-900/20">
-						<div className="text-center max-w-sm">
-							<div className="rounded-2xl bg-zinc-100 dark:bg-zinc-800 p-6 inline-block mb-4">
-								<MessageCircle className="size-14 text-zinc-400 dark:text-zinc-500" />
+				:	<div className="flex-1 flex flex-col items-center justify-center min-h-0 bg-zinc-50/50 dark:bg-zinc-900/30 border-l border-zinc-200 dark:border-zinc-800">
+						<div className="text-center max-w-sm px-6">
+							<div className="rounded-2xl bg-zinc-100 dark:bg-zinc-800 p-8 inline-block mb-5">
+								<MessageCircle className="size-16 text-zinc-400 dark:text-zinc-500" />
 							</div>
-							<p className="text-base font-medium text-zinc-700 dark:text-zinc-300">
-								Select a client to chat
+							<p className="text-lg font-medium text-zinc-700 dark:text-zinc-300">
+								Select a conversation
 							</p>
-							<p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-								Choose a conversation from the list to view messages and reply
+							<p className="text-sm text-zinc-500 dark:text-zinc-400 mt-2">
+								Choose a conversation from the list on the left to view messages and reply.
 							</p>
 						</div>
 					</div>
@@ -1671,7 +1657,7 @@ export function LiveChat() {
 
 			{/* Transfer to PA dialog */}
 			<Dialog open={transferOpen} onOpenChange={setTransferOpen}>
-				<DialogContent className="max-w-md">
+				<DialogContent className="max-w-lg">
 					<DialogHeader>
 						<DialogTitle className="flex items-center gap-2">
 							<UserRoundCog className="size-5" />
@@ -1681,34 +1667,50 @@ export function LiveChat() {
 					<p className="text-sm text-zinc-500 dark:text-zinc-400">
 						This client will be unassigned from you and assigned to the selected PA. They will be able to chat and send offers.
 					</p>
+					<div className="relative shrink-0">
+						<Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-zinc-400" />
+						<Input
+							placeholder="Search PAs..."
+							value={transferSearch}
+							onChange={(e) => setTransferSearch(e.target.value)}
+							className="pl-9"
+						/>
+					</div>
 					<ScrollArea className="max-h-[280px] -mx-2 px-2">
 						<div className="space-y-1 py-2">
 							{otherPAs.length === 0 && (
 								<p className="text-sm text-zinc-500 py-4 text-center">No other PAs available.</p>
 							)}
-							{otherPAs.map((pa) => (
-								<button
-									key={pa.id}
-									type="button"
-									disabled={transferringToPaId !== null}
-									onClick={() => void handleTransfer(pa.id)}
-									className="w-full text-left rounded-xl p-3 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800/80 transition-colors disabled:opacity-50 flex items-center gap-3">
-									<Avatar className="size-9 shrink-0">
-										<AvatarFallback className="bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300 text-sm">
-											{getInitials(pa.name || pa.email || "PA")}
-										</AvatarFallback>
-									</Avatar>
-									<div className="min-w-0 flex-1">
-										<p className="text-sm font-medium truncate">{pa.name || "Personal Assistant"}</p>
-										{pa.email && (
-											<p className="text-xs text-zinc-500 truncate">{pa.email}</p>
+							{otherPAs
+								.filter((pa) => {
+									const q = transferSearch.trim().toLowerCase();
+									if (!q) return true;
+									return (pa.name ?? "").toLowerCase().includes(q) ||
+										(pa.email ?? "").toLowerCase().includes(q);
+								})
+								.map((pa) => (
+									<button
+										key={pa.id}
+										type="button"
+										disabled={transferringToPaId !== null}
+										onClick={() => void handleTransfer(pa.id)}
+										className="w-full text-left rounded-xl p-3 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800/80 transition-colors disabled:opacity-50 flex items-center gap-3">
+										<Avatar className="size-9 shrink-0">
+											<AvatarFallback className="bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300 text-sm">
+												{getInitials(pa.name || pa.email || "PA")}
+											</AvatarFallback>
+										</Avatar>
+										<div className="min-w-0 flex-1">
+											<p className="text-sm font-medium truncate">{pa.name || "Personal Assistant"}</p>
+											{pa.email && (
+												<p className="text-xs text-zinc-500 truncate">{pa.email}</p>
+											)}
+										</div>
+										{transferringToPaId === pa.id && (
+											<RefreshCw className="size-4 animate-spin text-zinc-500 shrink-0" />
 										)}
-									</div>
-									{transferringToPaId === pa.id && (
-										<RefreshCw className="size-4 animate-spin text-zinc-500 shrink-0" />
-									)}
-								</button>
-							))}
+									</button>
+								))}
 						</div>
 					</ScrollArea>
 				</DialogContent>
@@ -1716,35 +1718,64 @@ export function LiveChat() {
 
 			{/* Send listing offer dialog */}
 			<Dialog open={offerListingOpen} onOpenChange={setOfferListingOpen}>
-				<DialogContent className="max-w-md max-h-[80vh] flex flex-col">
+				<DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
 					<DialogHeader>
 						<DialogTitle className="flex items-center gap-2">
 							<Building2 className="size-5" />
 							Send listing to client
 						</DialogTitle>
 					</DialogHeader>
+					<div className="relative shrink-0">
+						<Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-zinc-400" />
+						<Input
+							placeholder="Search listings..."
+							value={listingSearch}
+							onChange={(e) => setListingSearch(e.target.value)}
+							className="pl-9"
+						/>
+					</div>
 					<ScrollArea className="flex-1 min-h-0 -mx-2 px-2">
-						<div className="space-y-1 py-2">
+						<div className="space-y-2 py-2">
 							{listingsForOffer.length === 0 && (
 								<p className="text-sm text-zinc-500 py-4">No listings available.</p>
 							)}
-							{listingsForOffer.map((l) => {
-								const sym = l.currency === "USD" ? "$" : "₦";
-								const price = `${sym}${Number(l.pricePerNight || 0).toLocaleString()}/night`;
-								return (
-									<button
-										key={l.id}
-										type="button"
-										disabled={sendingOffer}
-										onClick={() => void sendOffer("listing", l.id)}
-										className="w-full text-left rounded-lg p-3 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800/80 transition-colors">
-										<p className="text-sm font-medium truncate">{l.name || "Listing"}</p>
-										<p className="text-xs text-zinc-500">
-											{l.propertyType ?? ""} · {price}
-										</p>
-									</button>
-								);
-							})}
+							{listingsForOffer
+								.filter((l) => {
+									const q = listingSearch.trim().toLowerCase();
+									if (!q) return true;
+									return (l.name ?? "").toLowerCase().includes(q) ||
+										(l.propertyType ?? "").toLowerCase().includes(q) ||
+										(l.city ?? "").toLowerCase().includes(q);
+								})
+								.map((l) => {
+									const sym = l.currency === "USD" ? "$" : "₦";
+									const price = `${sym}${Number(l.pricePerNight || 0).toLocaleString()}/night`;
+									const imgUrl = l.media?.[0]?.url;
+									return (
+										<button
+											key={l.id}
+											type="button"
+											disabled={sendingOffer}
+											onClick={() => void sendOffer("listing", l.id)}
+											className="w-full text-left rounded-xl p-3 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800/80 transition-colors flex items-center gap-3">
+											<div className="size-14 shrink-0 rounded-lg bg-zinc-200 dark:bg-zinc-700 overflow-hidden">
+												{imgUrl ? (
+													<img src={imgUrl} alt="" className="size-full object-cover" />
+												) : (
+													<div className="size-full flex items-center justify-center">
+														<ImageIcon className="size-6 text-zinc-400" />
+													</div>
+												)}
+											</div>
+											<div className="min-w-0 flex-1">
+												<p className="text-sm font-medium truncate">{l.name || "Listing"}</p>
+												<p className="text-xs text-zinc-500">
+													{l.propertyType ?? ""} · {price}
+												</p>
+											</div>
+										</button>
+									);
+								})}
 						</div>
 					</ScrollArea>
 				</DialogContent>
@@ -1752,35 +1783,63 @@ export function LiveChat() {
 
 			{/* Send concierge offer dialog */}
 			<Dialog open={offerConciergeOpen} onOpenChange={setOfferConciergeOpen}>
-				<DialogContent className="max-w-md max-h-[80vh] flex flex-col">
+				<DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
 					<DialogHeader>
 						<DialogTitle className="flex items-center gap-2">
 							<Tag className="size-5" />
 							Send concierge offer to client
 						</DialogTitle>
 					</DialogHeader>
+					<div className="relative shrink-0">
+						<Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-zinc-400" />
+						<Input
+							placeholder="Search concierge..."
+							value={conciergeSearch}
+							onChange={(e) => setConciergeSearch(e.target.value)}
+							className="pl-9"
+						/>
+					</div>
 					<ScrollArea className="flex-1 min-h-0 -mx-2 px-2">
-						<div className="space-y-1 py-2">
+						<div className="space-y-2 py-2">
 							{conciergeForOffer.length === 0 && (
 								<p className="text-sm text-zinc-500 py-4">No concierge items available.</p>
 							)}
-							{conciergeForOffer.map((item) => {
-								const sym = item.currency === "USD" ? "$" : "₦";
-								const price = `${sym}${Number(item.price || 0).toLocaleString()}`;
-								return (
-									<button
-										key={item.id}
-										type="button"
-										disabled={sendingOffer}
-										onClick={() => void sendOffer("concierge", item.id)}
-										className="w-full text-left rounded-lg p-3 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800/80 transition-colors">
-										<p className="text-sm font-medium truncate">{item.name || "Concierge"}</p>
-										<p className="text-xs text-zinc-500">
-											{item.category ?? ""} · {price}
-										</p>
-									</button>
-								);
-							})}
+							{conciergeForOffer
+								.filter((item) => {
+									const q = conciergeSearch.trim().toLowerCase();
+									if (!q) return true;
+									return (item.name ?? "").toLowerCase().includes(q) ||
+										(item.category ?? "").toLowerCase().includes(q);
+								})
+								.map((item) => {
+									const sym = item.currency === "USD" ? "$" : "₦";
+									const price = `${sym}${Number(item.price || 0).toLocaleString()}`;
+									const imgUrl = item.mediaUrl;
+									return (
+										<button
+											key={item.id}
+											type="button"
+											disabled={sendingOffer}
+											onClick={() => void sendOffer("concierge", item.id)}
+											className="w-full text-left rounded-xl p-3 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800/80 transition-colors flex items-center gap-3">
+											<div className="size-14 shrink-0 rounded-lg bg-zinc-200 dark:bg-zinc-700 overflow-hidden">
+												{imgUrl ? (
+													<img src={imgUrl} alt="" className="size-full object-cover" />
+												) : (
+													<div className="size-full flex items-center justify-center">
+														<ImageIcon className="size-6 text-zinc-400" />
+													</div>
+												)}
+											</div>
+											<div className="min-w-0 flex-1">
+												<p className="text-sm font-medium truncate">{item.name || "Concierge"}</p>
+												<p className="text-xs text-zinc-500">
+													{item.category ?? ""} · {price}
+												</p>
+											</div>
+										</button>
+									);
+								})}
 						</div>
 					</ScrollArea>
 				</DialogContent>
