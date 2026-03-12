@@ -174,7 +174,7 @@ export function Bookings() {
 		confirmBooking,
 		updateBookingInList,
 	} = useBookings();
-	const { users, getAssignedUsers } = useUsers();
+	const { users, getAssignedUsersForBooking } = useUsers();
 	const { listings, getListings } = useListings();
 	const [searchQuery, setSearchQuery] = useState("");
 	const [statusFilter] = useState("all");
@@ -201,18 +201,18 @@ export function Bookings() {
 
 	useEffect(() => {
 		getBookings();
-		getAssignedUsers();
+		getAssignedUsersForBooking();
 		getListings();
-	}, [getBookings, getAssignedUsers, getListings]);
+	}, [getBookings, getAssignedUsersForBooking, getListings]);
 
 	// Debounced user search: when create dialog is open and user types, fetch users by search
 	useEffect(() => {
 		if (!createOpen) return;
 		const t = setTimeout(() => {
-			getAssignedUsers({ search: userSearchQuery || undefined, limit: 50 });
+			getAssignedUsersForBooking({ search: userSearchQuery || undefined, limit: 50 });
 		}, 300);
 		return () => clearTimeout(t);
-	}, [createOpen, userSearchQuery, getAssignedUsers]);
+	}, [createOpen, userSearchQuery, getAssignedUsersForBooking]);
 
 	const handleAddBookingRow = () => {
 		setNewBookings([

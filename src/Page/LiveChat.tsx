@@ -1484,7 +1484,7 @@ export function LiveChat() {
 							</div>
 
 							{/* Action bar: Chat, offers, assign, transfer, resolve, end */}
-							<div className="px-4 pb-3 flex flex-wrap items-center gap-2">
+							<div className="px-4 pb-3 flex flex-wrap items-center gap-2 mb-2">
 								<Button
 									variant="ghost"
 									size="sm"
@@ -1608,7 +1608,7 @@ export function LiveChat() {
 
 						{/* Scrollable messages area (takes most vertical space) */}
 						<ScrollArea className="flex-1 min-h-0 p-4">
-							<div className="space-y-4 max-w-3xl mx-auto">
+							<div className="space-y-4 mx-auto">
 								{isLoadingMessages && !isRefreshing && (
 									<p className="text-sm text-zinc-500 py-4">Fetching messages…</p>
 								)}

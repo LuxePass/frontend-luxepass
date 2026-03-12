@@ -49,6 +49,8 @@ import {
 	Trash2,
 	Plus,
 	Tag,
+	Image as ImageIcon,
+	Upload,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 
@@ -80,6 +82,12 @@ export function ConciergeManagement() {
 		category: "TRANSPORT",
 		isActive: true,
 	});
+
+	// Media Management State
+	const [mediaDialogOpen, setMediaDialogOpen] = useState(false);
+	const [selectedItem, setSelectedItem] = useState<ConciergeItem | null>(null);
+	const [uploading, setUploading] = useState(false);
+	const [createUploading, setCreateUploading] = useState(false);
 
 	const fetchItems = useCallback(async () => {
 		setLoading(true);
@@ -134,6 +142,68 @@ export function ConciergeManagement() {
 			}
 		} catch (err) {
 			customToast.error("Failed to delete item");
+		}
+	};
+
+	const handleImageUpload = async (
+		e: React.ChangeEvent<HTMLInputElement>,
+		isCreate = false,
+	) => {
+		const file = e.target.files?.[0];
+		if (!file) return;
+
+		if (isCreate) setCreateUploading(true);
+		else setUploading(true);
+
+		try {
+			const formData = new FormData();
+			formData.append("file", file);
+			const response = await api.post("/concierge/upload", formData, {
+				headers: { "Content-Type": "multipart/form-data" },
+			});
+
+			if (response.data.success) {
+				const url = response.data.data.url;
+				if (isCreate) {
+					setNewItem((prev) => ({ ...prev, mediaUrl: url }));
+					customToast.success("Image uploaded successfully");
+				} else if (selectedItem) {
+					// Update existing item
+					const updateResp = await api.patch(`/concierge/${selectedItem.id}`, {
+						mediaUrl: url,
+					});
+					if (updateResp.data.success) {
+						setSelectedItem((prev) => (prev ? { ...prev, mediaUrl: url } : null));
+						fetchItems();
+						customToast.success("Image updated successfully");
+					}
+				}
+			}
+		} catch (err) {
+			customToast.error("Upload failed");
+		} finally {
+			if (isCreate) setCreateUploading(false);
+			else setUploading(false);
+			e.target.value = "";
+		}
+	};
+
+	const handleDeleteMedia = async () => {
+		if (!selectedItem || !window.confirm("Remove this image?")) return;
+		setUploading(true);
+		try {
+			const response = await api.patch(`/concierge/${selectedItem.id}`, {
+				mediaUrl: null,
+			});
+			if (response.data.success) {
+				setSelectedItem((prev) => (prev ? { ...prev, mediaUrl: undefined } : null));
+				fetchItems();
+				customToast.success("Image removed");
+			}
+		} catch (err) {
+			customToast.error("Failed to remove image");
+		} finally {
+			setUploading(false);
 		}
 	};
 
@@ -232,6 +302,36 @@ export function ConciergeManagement() {
 													}
 													className="bg-zinc-50 dark:bg-zinc-950"
 												/>
+											</div>
+											<div className="grid gap-2">
+												<Label>Item Image (optional)</Label>
+												<div className="flex flex-wrap items-center gap-2">
+													<label className="cursor-pointer">
+														<input
+															type="file"
+															accept="image/*"
+															className="hidden"
+															disabled={createUploading}
+															onChange={(e) => handleImageUpload(e, true)}
+														/>
+														<Button
+															type="button"
+															variant="outline"
+															size="sm"
+															className="border-zinc-300 dark:border-zinc-700"
+															asChild>
+															<span>
+																<Upload className="size-4 mr-2 inline" />
+																{createUploading ? "Uploading…" : "Upload image"}
+															</span>
+														</Button>
+													</label>
+													{newItem.mediaUrl && (
+														<span className="text-sm text-zinc-500 dark:text-zinc-400">
+															Image added
+														</span>
+													)}
+												</div>
 											</div>
 										</div>
 										<DialogFooter>
@@ -348,6 +448,14 @@ export function ConciergeManagement() {
 														align="end"
 														className="bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
 														<DropdownMenuItem
+															onClick={() => {
+																setSelectedItem(item);
+																setMediaDialogOpen(true);
+															}}>
+															<ImageIcon className="size-3.5 mr-2" />
+															Manage Media
+														</DropdownMenuItem>
+														<DropdownMenuItem
 															onClick={() => handleDeleteItem(item.id)}
 															className="text-red-600">
 															<Trash2 className="size-3.5 mr-2" />
@@ -364,6 +472,78 @@ export function ConciergeManagement() {
 					</div>
 				</ScrollArea>
 			</Card>
+
+			{/* Manage Media Dialog */}
+			<Dialog
+				open={mediaDialogOpen}
+				onOpenChange={setMediaDialogOpen}>
+				<DialogContent className="sm:max-w-[500px] bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
+					<DialogHeader>
+						<DialogTitle>Manage Media - {selectedItem?.name}</DialogTitle>
+						<DialogDescription>
+							Upload or remove the image for this concierge item.
+						</DialogDescription>
+					</DialogHeader>
+					<div className="py-6 flex flex-col items-center justify-center gap-4">
+						{selectedItem?.mediaUrl ?
+							<div className="relative group w-full aspect-video rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-800">
+								<img
+									src={selectedItem.mediaUrl}
+									alt={selectedItem.name}
+									className="w-full h-full object-cover"
+								/>
+								<div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+									<Button
+										variant="destructive"
+										size="sm"
+										onClick={handleDeleteMedia}
+										disabled={uploading}>
+										<Trash2 className="size-4 mr-2" />
+										Remove
+									</Button>
+								</div>
+							</div>
+						:	<div className="w-full aspect-video rounded-lg border-2 border-dashed border-zinc-200 dark:border-zinc-800 flex flex-col items-center justify-center text-zinc-500 p-6">
+								<ImageIcon className="size-12 mb-2 opacity-20" />
+								<p className="text-sm">No image uploaded</p>
+							</div>
+						}
+
+						<div className="w-full">
+							<label className="w-full">
+								<input
+									type="file"
+									accept="image/*"
+									className="hidden"
+									disabled={uploading}
+									onChange={(e) => handleImageUpload(e, false)}
+								/>
+								<Button
+									variant="outline"
+									className="w-full border-zinc-300 dark:border-zinc-700"
+									disabled={uploading}
+									asChild>
+									<span>
+										<Upload className="size-4 mr-2 inline" />
+										{uploading ?
+											"Processing..."
+										: selectedItem?.mediaUrl ?
+											"Replace Image"
+										:	"Upload Image"}
+									</span>
+								</Button>
+							</label>
+						</div>
+					</div>
+					<DialogFooter>
+						<Button
+							onClick={() => setMediaDialogOpen(false)}
+							variant="outline">
+							Close
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 		</div>
 	);
 }

@@ -75,6 +75,35 @@ export function useUsers() {
 		[request],
 	);
 
+	/**
+	 * Get users assigned to the current PA (live chat assignment).
+	 * Use this for create-booking flows so PA/SENIOR_PA see their assigned users and can request OTP.
+	 * Calls GET /users/assigned (allowed for PA, SENIOR_PA, ADMIN, SUPER_ADMIN).
+	 */
+	const getAssignedUsersForBooking = useCallback(
+		async (params?: { page?: number; limit?: number; search?: string }) => {
+			try {
+				return await request(
+					api.get("/users/assigned", {
+						params: { ...params, limit: params?.limit ?? 100 },
+					})
+				);
+			} catch (error: unknown) {
+				const err = error as {
+					response?: {
+						status?: number;
+						data?: { error?: { message?: string; code?: string } };
+					};
+				};
+				if (err?.response?.status === 403) {
+					return { data: [], meta: null };
+				}
+				throw error;
+			}
+		},
+		[request],
+	);
+
 	const getUserById = useCallback(async (id: string) => {
 		const response = await api.get(`/users/${id}`);
 		return response.data?.data;
@@ -134,6 +163,7 @@ export function useUsers() {
 		loading: usersLoading, // Renamed
 		error: usersError, // Renamed
 		getAssignedUsers,
+		getAssignedUsersForBooking,
 		getUserById,
 		getAllPAs,
 		createPA,

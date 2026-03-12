@@ -64,7 +64,7 @@ export function ConciergeBookings() {
 		confirmBooking,
 		updateBookingInList,
 	} = useBookings();
-	const { users, getAssignedUsers } = useUsers();
+	const { users, getAssignedUsersForBooking } = useUsers();
 	const [searchQuery, setSearchQuery] = useState("");
 	const [statusFilter] = useState("all");
 	const [selectedUserId, setSelectedUserId] = useState("");
@@ -91,7 +91,7 @@ export function ConciergeBookings() {
 
 	useEffect(() => {
 		getBookings({ type: "CONCIERGE" });
-		getAssignedUsers();
+		getAssignedUsersForBooking();
 
 		// Fetch Concierge Items
 		const fetchConciergeItems = async () => {
@@ -105,15 +105,15 @@ export function ConciergeBookings() {
 			}
 		};
 		fetchConciergeItems();
-	}, [getBookings, getAssignedUsers]);
+	}, [getBookings, getAssignedUsersForBooking]);
 
 	useEffect(() => {
 		if (!createOpen) return;
 		const t = setTimeout(() => {
-			getAssignedUsers({ search: userSearchQuery || undefined, limit: 50 });
+			getAssignedUsersForBooking({ search: userSearchQuery || undefined, limit: 50 });
 		}, 300);
 		return () => clearTimeout(t);
-	}, [createOpen, userSearchQuery, getAssignedUsers]);
+	}, [createOpen, userSearchQuery, getAssignedUsersForBooking]);
 
 	// Only allow OTP request when user is on live chat and assigned to current PA
 	useEffect(() => {
