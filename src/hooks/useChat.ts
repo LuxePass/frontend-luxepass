@@ -18,7 +18,10 @@ const whatsappBackendBaseUrl =
 	import.meta.env.VITE_WHATSAPP_BACKEND_URL ??
 	"https://whatsapp-backend-ix4v.onrender.com/api";
 
-export function useChat() {
+/**
+ * @param paId - Current PA id. Required for fetching conversations (WhatsApp backend returns only conversations assigned to this PA).
+ */
+export function useChat(paId: string | null = null) {
 	const [conversations, setConversations] = useState<ChatConversation[]>([]);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -65,11 +68,17 @@ export function useChat() {
 
 	const fetchConversations = useCallback(
 		async (silent = false) => {
+			if (!paId) {
+				setConversations([]);
+				return;
+			}
 			if (!silent) setLoading(true);
 			setError(null);
 
 			try {
-				const response = await fetch(`${whatsappBackendBaseUrl}/conversations`, {
+				const url = new URL(`${whatsappBackendBaseUrl}/conversations`);
+				url.searchParams.set("paId", paId);
+				const response = await fetch(url.toString(), {
 					headers: backendHeaders,
 					method: "GET",
 				});
@@ -117,7 +126,7 @@ export function useChat() {
 				if (!silent) setLoading(false);
 			}
 		},
-		[backendHeaders, normalizeTimestamp],
+		[paId, backendHeaders, normalizeTimestamp],
 	);
 
 	return {

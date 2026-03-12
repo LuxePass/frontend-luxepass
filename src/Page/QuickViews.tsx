@@ -2,6 +2,7 @@ import { useEffect, useMemo } from "react";
 import { Card } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { ScrollArea } from "../components/ui/scroll-area";
+import { useAuth } from "../hooks/useAuth";
 import { useBookings } from "../hooks/useBookings";
 import { useChat } from "../hooks/useChat";
 import { useTransfers } from "../hooks/useTransfers";
@@ -33,8 +34,11 @@ export function QuickViews({
 	onListingsClick,
 	onNavigateToReferrals,
 }: QuickViewsProps) {
+	const { user } = useAuth();
 	const { bookings, getBookings, loading: loadingBookings } = useBookings();
-	const { conversations, fetchConversations, loading: loadingChat } = useChat();
+	const { conversations, fetchConversations, loading: loadingChat } = useChat(
+		user?.id ?? null,
+	);
 	const { transfers, getTransfers, loading: loadingTransfers } = useTransfers();
 	const { listings, getListings, loading: loadingListings } = useListings();
 	const {
