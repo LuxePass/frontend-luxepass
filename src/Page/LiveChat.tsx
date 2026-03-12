@@ -25,6 +25,7 @@ import {
 	Sparkles,
 	Search,
 	Image as ImageIcon,
+	ChevronLeft,
 } from "lucide-react";
 import { cn } from "../utils";
 import { customToast } from "./CustomToast";
@@ -95,18 +96,37 @@ export function LiveChat() {
 	const [offerListingOpen, setOfferListingOpen] = useState(false);
 	const [offerConciergeOpen, setOfferConciergeOpen] = useState(false);
 	const [listingsForOffer, setListingsForOffer] = useState<
-		Array<{ id: string; name: string; propertyType?: string; pricePerNight?: number; currency?: string; city?: string; media?: Array<{ url: string }> }>
+		Array<{
+			id: string;
+			name: string;
+			propertyType?: string;
+			pricePerNight?: number;
+			currency?: string;
+			city?: string;
+			media?: Array<{ url: string }>;
+		}>
 	>([]);
 	const [conciergeForOffer, setConciergeForOffer] = useState<
-		Array<{ id: string; name: string; category?: string; price?: string; currency?: string; mediaUrl?: string }>
+		Array<{
+			id: string;
+			name: string;
+			category?: string;
+			price?: string;
+			currency?: string;
+			mediaUrl?: string;
+		}>
 	>([]);
 	const [listingSearch, setListingSearch] = useState("");
 	const [conciergeSearch, setConciergeSearch] = useState("");
 	const [transferSearch, setTransferSearch] = useState("");
 	const [sendingOffer, setSendingOffer] = useState(false);
 	const [transferOpen, setTransferOpen] = useState(false);
-	const [otherPAs, setOtherPAs] = useState<Array<{ id: string; name: string; email?: string }>>([]);
-	const [transferringToPaId, setTransferringToPaId] = useState<string | null>(null);
+	const [otherPAs, setOtherPAs] = useState<
+		Array<{ id: string; name: string; email?: string }>
+	>([]);
+	const [transferringToPaId, setTransferringToPaId] = useState<string | null>(
+		null,
+	);
 
 	const { user } = useAuth();
 
@@ -953,7 +973,9 @@ export function LiveChat() {
 
 			customToast.success("Marked as resolved (Unassigned)");
 		} catch (e) {
-			customToast.error(e instanceof Error ? e.message : "Failed to mark as resolved");
+			customToast.error(
+				e instanceof Error ? e.message : "Failed to mark as resolved",
+			);
 		}
 	};
 
@@ -1018,15 +1040,20 @@ export function LiveChat() {
 			try {
 				const res = await api.get("/listings", { params: { limit: 100 } });
 				const raw = res.data?.data;
-				const list = Array.isArray(raw)
-					? raw
-					: (raw && typeof raw === "object" && "data" in raw ? (raw as { data: unknown[] }).data : []) ?? [];
+				const list =
+					Array.isArray(raw) ? raw : (
+						((raw && typeof raw === "object" && "data" in raw ?
+							(raw as { data: unknown[] }).data
+						:	[]) ?? [])
+					);
 				if (!cancelled) setListingsForOffer(Array.isArray(list) ? list : []);
 			} catch {
 				if (!cancelled) setListingsForOffer([]);
 			}
 		})();
-		return () => { cancelled = true; };
+		return () => {
+			cancelled = true;
+		};
 	}, [offerListingOpen]);
 
 	/** Fetch concierge items when opening Send concierge dialog (backend returns { data: { data: array, meta } }) */
@@ -1038,15 +1065,20 @@ export function LiveChat() {
 			try {
 				const res = await api.get("/concierge");
 				const raw = res.data?.data;
-				const list = Array.isArray(raw)
-					? raw
-					: (raw && typeof raw === "object" && "data" in raw ? (raw as { data: unknown[] }).data : []) ?? [];
+				const list =
+					Array.isArray(raw) ? raw : (
+						((raw && typeof raw === "object" && "data" in raw ?
+							(raw as { data: unknown[] }).data
+						:	[]) ?? [])
+					);
 				if (!cancelled) setConciergeForOffer(Array.isArray(list) ? list : []);
 			} catch {
 				if (!cancelled) setConciergeForOffer([]);
 			}
 		})();
-		return () => { cancelled = true; };
+		return () => {
+			cancelled = true;
+		};
 	}, [offerConciergeOpen]);
 
 	const sendOffer = useCallback(
@@ -1071,11 +1103,16 @@ export function LiveChat() {
 				});
 				if (!response.ok) {
 					const body = await response.json().catch(() => ({}));
-					throw new Error(body?.error?.message ?? body?.error ?? "Failed to send offer");
+					throw new Error(
+						body?.error?.message ?? body?.error ?? "Failed to send offer",
+					);
 				}
 				customToast.success({
 					title: "Offer sent",
-					description: type === "listing" ? "Listing sent via WhatsApp." : "Concierge offer sent via WhatsApp.",
+					description:
+						type === "listing" ?
+							"Listing sent via WhatsApp."
+						:	"Concierge offer sent via WhatsApp.",
 				});
 				if (type === "listing") setOfferListingOpen(false);
 				else setOfferConciergeOpen(false);
@@ -1089,7 +1126,14 @@ export function LiveChat() {
 				setSendingOffer(false);
 			}
 		},
-		[selectedConversation, conversations, user?.id, whatsappBackendBaseUrl, backendHeaders, fetchMessages],
+		[
+			selectedConversation,
+			conversations,
+			user?.id,
+			whatsappBackendBaseUrl,
+			backendHeaders,
+			fetchMessages,
+		],
 	);
 
 	/** Fetch other PAs when opening Transfer dialog */
@@ -1101,18 +1145,31 @@ export function LiveChat() {
 			try {
 				const res = await api.get("/pas", { params: { limit: 100 } });
 				const raw = res.data?.data?.data ?? res.data?.data ?? res.data;
-				const list: Array<{ id?: string; name?: string; email?: string }> = Array.isArray(raw)
-					? raw
-					: (raw && typeof raw === "object" && "data" in raw ? (raw as { data: Array<{ id?: string; name?: string; email?: string }> }).data : []) ?? [];
+				const list: Array<{ id?: string; name?: string; email?: string }> =
+					Array.isArray(raw) ? raw : (
+						((raw && typeof raw === "object" && "data" in raw ?
+							(raw as { data: Array<{ id?: string; name?: string; email?: string }> })
+								.data
+						:	[]) ?? [])
+					);
 				const others = list
-					.filter((pa): pa is { id: string; name?: string; email?: string } => !!pa.id && pa.id !== user?.id)
-					.map((pa) => ({ id: pa.id, name: pa.name ?? pa.email ?? "PA", email: pa.email }));
+					.filter(
+						(pa): pa is { id: string; name?: string; email?: string } =>
+							!!pa.id && pa.id !== user?.id,
+					)
+					.map((pa) => ({
+						id: pa.id,
+						name: pa.name ?? pa.email ?? "PA",
+						email: pa.email,
+					}));
 				if (!cancelled) setOtherPAs(others);
 			} catch {
 				if (!cancelled) setOtherPAs([]);
 			}
 		})();
-		return () => { cancelled = true; };
+		return () => {
+			cancelled = true;
+		};
 	}, [transferOpen, user?.id]);
 
 	const handleTransfer = useCallback(
@@ -1124,7 +1181,8 @@ export function LiveChat() {
 			try {
 				const phone = conv.clientPhone.replace(/\D/g, "");
 				const userRes = await api.get("/users", { params: { phone } });
-				const targetUser = userRes.data?.data?.users?.[0] || userRes.data?.data?.[0];
+				const targetUser =
+					userRes.data?.data?.users?.[0] || userRes.data?.data?.[0];
 				if (!targetUser) {
 					customToast.error("User not found in system");
 					return;
@@ -1133,11 +1191,14 @@ export function LiveChat() {
 					userId: targetUser.id,
 					toPaId,
 				});
-				const transferRes = await fetch(`${whatsappBackendBaseUrl}/livechat/transfer`, {
-					method: "POST",
-					headers: backendHeaders,
-					body: JSON.stringify({ phone: conv.clientPhone, toPaId }),
-				});
+				const transferRes = await fetch(
+					`${whatsappBackendBaseUrl}/livechat/transfer`,
+					{
+						method: "POST",
+						headers: backendHeaders,
+						body: JSON.stringify({ phone: conv.clientPhone, toPaId }),
+					},
+				);
 				if (!transferRes.ok) {
 					const body = await transferRes.json().catch(() => ({}));
 					throw new Error(body?.error ?? "WhatsApp backend sync failed");
@@ -1147,12 +1208,21 @@ export function LiveChat() {
 				setSelectedConversation(null);
 				void fetchConversations(false);
 			} catch (err) {
-				customToast.error(err instanceof Error ? err.message : "Failed to transfer");
+				customToast.error(
+					err instanceof Error ? err.message : "Failed to transfer",
+				);
 			} finally {
 				setTransferringToPaId(null);
 			}
 		},
-		[selectedConversation, conversations, user?.id, whatsappBackendBaseUrl, backendHeaders, fetchConversations],
+		[
+			selectedConversation,
+			conversations,
+			user?.id,
+			whatsappBackendBaseUrl,
+			backendHeaders,
+			fetchConversations,
+		],
 	);
 
 	// Initial fetch on mount
@@ -1272,8 +1342,14 @@ export function LiveChat() {
 
 	return (
 		<Card className="flex-1 min-h-0 flex flex-row bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-sm">
-			{/* Left panel: Conversation list (fixed width, always visible) */}
-			<div className="w-[280px] sm:w-[320px] flex-shrink-0 flex flex-col min-h-0 border-r border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
+			{/* Left panel: Conversation list (fixed width on desktop, full width on mobile if no chat selected) */}
+			<div
+				className={cn(
+					"flex-shrink-0 flex flex-col min-h-0 border-r border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50 transition-all",
+					selectedConv ?
+						"hidden md:flex md:w-[280px] lg:w-[320px]"
+					:	"flex w-full md:w-[280px] lg:w-[320px]",
+				)}>
 				<div className="p-4 border-b border-zinc-200 dark:border-zinc-800 shrink-0">
 					<div className="flex items-center justify-between gap-2">
 						<div>
@@ -1310,8 +1386,10 @@ export function LiveChat() {
 						{!isLoadingConversations && conversations.length === 0 && (
 							<div className="py-8 px-4 text-center">
 								<UserCircle className="size-12 mx-auto text-zinc-300 dark:text-zinc-600 mb-2" />
-								<p className="text-sm text-zinc-500">No conversations yet</p>
-								<p className="text-xs text-zinc-400 mt-1">
+								<p className="text-sm text-zinc-500 dark:text-zinc-400">
+									No conversations yet
+								</p>
+								<p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1">
 									Conversations assigned to you will appear here
 								</p>
 							</div>
@@ -1325,9 +1403,9 @@ export function LiveChat() {
 									onClick={() => handleSelectConversation(conv.id)}
 									className={cn(
 										"w-full p-3 rounded-lg text-left transition-colors border border-transparent",
-										isSelected
-											? "bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 shadow-sm"
-											: "hover:bg-white/80 dark:hover:bg-zinc-800/60",
+										isSelected ?
+											"bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 shadow-sm"
+										:	"hover:bg-white/80 dark:hover:bg-zinc-800/60",
 									)}>
 									<div className="flex items-center gap-3">
 										<div className="relative shrink-0">
@@ -1369,14 +1447,25 @@ export function LiveChat() {
 				</ScrollArea>
 			</div>
 
-			{/* Right panel: Active chat window (takes remaining space, always visible) */}
-			<div className="flex-1 flex flex-col min-h-0 min-w-0 bg-white dark:bg-zinc-950">
+			{/* Right panel: Active chat window (takes remaining space, hidden on mobile if no chat selected) */}
+			<div
+				className={cn(
+					"flex-1 flex flex-col min-h-0 min-w-0 bg-white dark:bg-zinc-950",
+					!selectedConv && "hidden md:flex",
+				)}>
 				{selectedConv ?
 					<>
 						{/* Chat header: avatar, name, phone, actions */}
 						<div className="shrink-0 border-b border-zinc-200 dark:border-zinc-800">
-							<div className="p-4 flex items-center gap-3">
-								<Avatar className="size-12 shrink-0 ring-2 ring-zinc-200 dark:ring-zinc-700">
+							<div className="p-4 flex items-center gap-2 sm:gap-3">
+								<Button
+									variant="ghost"
+									size="icon"
+									className="md:hidden shrink-0 -ml-2 mr-1 h-9 w-9 text-zinc-600 dark:text-zinc-400"
+									onClick={() => setSelectedConversation(null)}>
+									<ChevronLeft className="size-5" />
+								</Button>
+								<Avatar className="size-10 sm:size-12 shrink-0 ring-2 ring-zinc-200 dark:ring-zinc-700">
 									<AvatarFallback className="bg-gradient-to-br from-green-500 to-emerald-600 text-white font-medium">
 										{getInitials(selectedConv.clientName)}
 									</AvatarFallback>
@@ -1387,7 +1476,9 @@ export function LiveChat() {
 									</h3>
 									<div className="flex items-center gap-1.5 text-sm text-zinc-500 dark:text-zinc-400">
 										<Phone className="size-3.5 shrink-0" />
-										<span className="truncate font-mono">{selectedConv.clientPhone ?? "—"}</span>
+										<span className="truncate font-mono">
+											{selectedConv.clientPhone ?? "—"}
+										</span>
 									</div>
 								</div>
 							</div>
@@ -1398,12 +1489,20 @@ export function LiveChat() {
 									variant="ghost"
 									size="sm"
 									className="h-8 w-8 p-0"
-									onClick={() => selectedConversation && void fetchMessages(selectedConversation, false)}
+									onClick={() =>
+										selectedConversation &&
+										void fetchMessages(selectedConversation, false)
+									}
 									disabled={isLoadingMessages}
 									title="Refresh messages">
-									<RefreshCw className={cn("size-4", isLoadingMessages && "animate-spin")} />
+									<RefreshCw
+										className={cn("size-4", isLoadingMessages && "animate-spin")}
+									/>
 								</Button>
-								<Separator orientation="vertical" className="h-6 hidden sm:block" />
+								<Separator
+									orientation="vertical"
+									className="h-6 hidden sm:block"
+								/>
 								<Button
 									variant="outline"
 									size="sm"
@@ -1424,7 +1523,10 @@ export function LiveChat() {
 									<Tag className="size-3.5" />
 									<span className="hidden sm:inline">Concierge</span>
 								</Button>
-								<Separator orientation="vertical" className="h-6 hidden sm:block" />
+								<Separator
+									orientation="vertical"
+									className="h-6 hidden sm:block"
+								/>
 								<Button
 									variant="outline"
 									size="sm"
@@ -1463,11 +1565,17 @@ export function LiveChat() {
 								<div className="hidden lg:block flex-1" />
 								<DropdownMenu>
 									<DropdownMenuTrigger asChild>
-										<Button variant="outline" size="sm" className="h-8 w-8 p-0" title="More actions">
+										<Button
+											variant="outline"
+											size="sm"
+											className="h-8 w-8 p-0"
+											title="More actions">
 											<MoreVertical className="size-4" />
 										</Button>
 									</DropdownMenuTrigger>
-									<DropdownMenuContent align="end" className="w-48">
+									<DropdownMenuContent
+										align="end"
+										className="w-48">
 										<DropdownMenuItem onClick={() => setOfferListingOpen(true)}>
 											<Building2 className="size-3.5 mr-2" />
 											Send listing
@@ -1488,7 +1596,9 @@ export function LiveChat() {
 											<Archive className="size-3.5 mr-2" />
 											Resolve
 										</DropdownMenuItem>
-										<DropdownMenuItem onClick={handleCloseChat} className="text-red-600 dark:text-red-400">
+										<DropdownMenuItem
+											onClick={handleCloseChat}
+											className="text-red-600 dark:text-red-400">
 											End Live Chat
 										</DropdownMenuItem>
 									</DropdownMenuContent>
@@ -1506,8 +1616,12 @@ export function LiveChat() {
 								{!isLoadingMessages && selectedMessages.length === 0 && (
 									<div className="py-12 text-center">
 										<Sparkles className="size-10 mx-auto text-zinc-300 dark:text-zinc-600 mb-3" />
-										<p className="text-sm text-zinc-500">No messages yet</p>
-										<p className="text-xs text-zinc-400 mt-1">Send a message or share a listing or concierge offer</p>
+										<p className="text-sm text-zinc-500 dark:text-zinc-400">
+											No messages yet
+										</p>
+										<p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1">
+											Send a message or share a listing or concierge offer
+										</p>
 									</div>
 								)}
 
@@ -1648,7 +1762,8 @@ export function LiveChat() {
 								Select a conversation
 							</p>
 							<p className="text-sm text-zinc-500 dark:text-zinc-400 mt-2">
-								Choose a conversation from the list on the left to view messages and reply.
+								Choose a conversation from the list on the left to view messages and
+								reply.
 							</p>
 						</div>
 					</div>
@@ -1656,7 +1771,9 @@ export function LiveChat() {
 			</div>
 
 			{/* Transfer to PA dialog */}
-			<Dialog open={transferOpen} onOpenChange={setTransferOpen}>
+			<Dialog
+				open={transferOpen}
+				onOpenChange={setTransferOpen}>
 				<DialogContent className="max-w-lg">
 					<DialogHeader>
 						<DialogTitle className="flex items-center gap-2">
@@ -1665,7 +1782,8 @@ export function LiveChat() {
 						</DialogTitle>
 					</DialogHeader>
 					<p className="text-sm text-zinc-500 dark:text-zinc-400">
-						This client will be unassigned from you and assigned to the selected PA. They will be able to chat and send offers.
+						This client will be unassigned from you and assigned to the selected PA.
+						They will be able to chat and send offers.
 					</p>
 					<div className="relative shrink-0">
 						<Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-zinc-400" />
@@ -1679,14 +1797,18 @@ export function LiveChat() {
 					<ScrollArea className="max-h-[280px] -mx-2 px-2">
 						<div className="space-y-1 py-2">
 							{otherPAs.length === 0 && (
-								<p className="text-sm text-zinc-500 py-4 text-center">No other PAs available.</p>
+								<p className="text-sm text-zinc-500 py-4 text-center">
+									No other PAs available.
+								</p>
 							)}
 							{otherPAs
 								.filter((pa) => {
 									const q = transferSearch.trim().toLowerCase();
 									if (!q) return true;
-									return (pa.name ?? "").toLowerCase().includes(q) ||
-										(pa.email ?? "").toLowerCase().includes(q);
+									return (
+										(pa.name ?? "").toLowerCase().includes(q) ||
+										(pa.email ?? "").toLowerCase().includes(q)
+									);
 								})
 								.map((pa) => (
 									<button
@@ -1701,7 +1823,9 @@ export function LiveChat() {
 											</AvatarFallback>
 										</Avatar>
 										<div className="min-w-0 flex-1">
-											<p className="text-sm font-medium truncate">{pa.name || "Personal Assistant"}</p>
+											<p className="text-sm font-medium truncate">
+												{pa.name || "Personal Assistant"}
+											</p>
 											{pa.email && (
 												<p className="text-xs text-zinc-500 truncate">{pa.email}</p>
 											)}
@@ -1717,7 +1841,9 @@ export function LiveChat() {
 			</Dialog>
 
 			{/* Send listing offer dialog */}
-			<Dialog open={offerListingOpen} onOpenChange={setOfferListingOpen}>
+			<Dialog
+				open={offerListingOpen}
+				onOpenChange={setOfferListingOpen}>
 				<DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
 					<DialogHeader>
 						<DialogTitle className="flex items-center gap-2">
@@ -1743,9 +1869,11 @@ export function LiveChat() {
 								.filter((l) => {
 									const q = listingSearch.trim().toLowerCase();
 									if (!q) return true;
-									return (l.name ?? "").toLowerCase().includes(q) ||
+									return (
+										(l.name ?? "").toLowerCase().includes(q) ||
 										(l.propertyType ?? "").toLowerCase().includes(q) ||
-										(l.city ?? "").toLowerCase().includes(q);
+										(l.city ?? "").toLowerCase().includes(q)
+									);
 								})
 								.map((l) => {
 									const sym = l.currency === "USD" ? "$" : "₦";
@@ -1759,16 +1887,21 @@ export function LiveChat() {
 											onClick={() => void sendOffer("listing", l.id)}
 											className="w-full text-left rounded-xl p-3 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800/80 transition-colors flex items-center gap-3">
 											<div className="size-14 shrink-0 rounded-lg bg-zinc-200 dark:bg-zinc-700 overflow-hidden">
-												{imgUrl ? (
-													<img src={imgUrl} alt="" className="size-full object-cover" />
-												) : (
-													<div className="size-full flex items-center justify-center">
+												{imgUrl ?
+													<img
+														src={imgUrl}
+														alt=""
+														className="size-full object-cover"
+													/>
+												:	<div className="size-full flex items-center justify-center">
 														<ImageIcon className="size-6 text-zinc-400" />
 													</div>
-												)}
+												}
 											</div>
 											<div className="min-w-0 flex-1">
-												<p className="text-sm font-medium truncate">{l.name || "Listing"}</p>
+												<p className="text-sm font-medium truncate">
+													{l.name || "Listing"}
+												</p>
 												<p className="text-xs text-zinc-500">
 													{l.propertyType ?? ""} · {price}
 												</p>
@@ -1782,7 +1915,9 @@ export function LiveChat() {
 			</Dialog>
 
 			{/* Send concierge offer dialog */}
-			<Dialog open={offerConciergeOpen} onOpenChange={setOfferConciergeOpen}>
+			<Dialog
+				open={offerConciergeOpen}
+				onOpenChange={setOfferConciergeOpen}>
 				<DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
 					<DialogHeader>
 						<DialogTitle className="flex items-center gap-2">
@@ -1802,14 +1937,18 @@ export function LiveChat() {
 					<ScrollArea className="flex-1 min-h-0 -mx-2 px-2">
 						<div className="space-y-2 py-2">
 							{conciergeForOffer.length === 0 && (
-								<p className="text-sm text-zinc-500 py-4">No concierge items available.</p>
+								<p className="text-sm text-zinc-500 py-4">
+									No concierge items available.
+								</p>
 							)}
 							{conciergeForOffer
 								.filter((item) => {
 									const q = conciergeSearch.trim().toLowerCase();
 									if (!q) return true;
-									return (item.name ?? "").toLowerCase().includes(q) ||
-										(item.category ?? "").toLowerCase().includes(q);
+									return (
+										(item.name ?? "").toLowerCase().includes(q) ||
+										(item.category ?? "").toLowerCase().includes(q)
+									);
 								})
 								.map((item) => {
 									const sym = item.currency === "USD" ? "$" : "₦";
@@ -1823,16 +1962,21 @@ export function LiveChat() {
 											onClick={() => void sendOffer("concierge", item.id)}
 											className="w-full text-left rounded-xl p-3 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800/80 transition-colors flex items-center gap-3">
 											<div className="size-14 shrink-0 rounded-lg bg-zinc-200 dark:bg-zinc-700 overflow-hidden">
-												{imgUrl ? (
-													<img src={imgUrl} alt="" className="size-full object-cover" />
-												) : (
-													<div className="size-full flex items-center justify-center">
+												{imgUrl ?
+													<img
+														src={imgUrl}
+														alt=""
+														className="size-full object-cover"
+													/>
+												:	<div className="size-full flex items-center justify-center">
 														<ImageIcon className="size-6 text-zinc-400" />
 													</div>
-												)}
+												}
 											</div>
 											<div className="min-w-0 flex-1">
-												<p className="text-sm font-medium truncate">{item.name || "Concierge"}</p>
+												<p className="text-sm font-medium truncate">
+													{item.name || "Concierge"}
+												</p>
 												<p className="text-xs text-zinc-500">
 													{item.category ?? ""} · {price}
 												</p>
