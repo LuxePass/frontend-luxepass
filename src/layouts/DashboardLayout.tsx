@@ -16,6 +16,7 @@ import { NotificationBell } from "../Page/NotificationBell";
 import { useAuth } from "../hooks/useAuth";
 import { Toaster } from "../components/ui/sonner";
 import { AIAssistantModal } from "../Page/AIAssistantModal";
+import { AIContextProvider } from "../context/AIContext";
 
 export default function DashboardLayout() {
 	const { logout } = useAuth();
@@ -82,6 +83,9 @@ export default function DashboardLayout() {
 			case "audit-logs":
 				navigate("/audit-logs");
 				break;
+			case "marketing":
+				navigate("/marketing");
+				break;
 			case "permissions":
 				navigate("/permissions");
 				break;
@@ -110,6 +114,7 @@ export default function DashboardLayout() {
 	};
 
 	return (
+		<AIContextProvider>
 		<div className="h-screen flex bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 overflow-hidden">
 			{/* Desktop Sidebar */}
 			<div
@@ -218,5 +223,6 @@ export default function DashboardLayout() {
 				<Toaster position="top-right" />
 			</div>
 		</div>
+		</AIContextProvider>
 	);
 }

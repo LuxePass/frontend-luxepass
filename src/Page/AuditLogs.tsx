@@ -1,13 +1,34 @@
 import { useState, useEffect } from "react";
 import { useAuditLogs } from "../hooks/useAuditLogs";
+import type { AuditLog } from "../hooks/useAuditLogs";
 import { Card } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { Input } from "../components/ui/input";
+import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+} from "../components/ui/dialog";
 import { Search } from "lucide-react";
 
 export function AuditLogs() {
-	const { getAuditLogs, logs, loading } = useAuditLogs();
+	const { getAuditLogs, getAuditLogById, logs, loading } = useAuditLogs();
 	const [searchQuery, setSearchQuery] = useState("");
+	const [selectedLogId, setSelectedLogId] = useState<string | null>(null);
+	const [detailLog, setDetailLog] = useState<AuditLog | null>(null);
+	const [detailLoading, setDetailLoading] = useState(false);
+
+	useEffect(() => {
+		if (!selectedLogId) {
+			setDetailLog(null);
+			return;
+		}
+		setDetailLoading(true);
+		getAuditLogById(selectedLogId)
+			.then(setDetailLog)
+			.finally(() => setDetailLoading(false));
+	}, [selectedLogId, getAuditLogById]);
 
 	useEffect(() => {
 		getAuditLogs();
@@ -90,7 +111,16 @@ export function AuditLogs() {
 								filteredLogs.map((log) => (
 									<tr
 										key={log.id}
-										className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
+										role="button"
+										tabIndex={0}
+										onClick={() => setSelectedLogId(log.id)}
+										onKeyDown={(e) => {
+											if (e.key === "Enter" || e.key === " ") {
+												e.preventDefault();
+												setSelectedLogId(log.id);
+											}
+										}}
+										className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer">
 										<td className="px-4 py-4 whitespace-nowrap text-xs text-zinc-500">
 											{new Date(log.createdAt).toLocaleString()}
 										</td>
@@ -124,6 +154,100 @@ export function AuditLogs() {
 					</table>
 				</div>
 			</Card>
+
+			<Dialog
+				open={!!selectedLogId}
+				onOpenChange={(open) => !open && setSelectedLogId(null)}>
+				<DialogContent className="sm:max-w-xl max-h-[90vh] overflow-hidden flex flex-col bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
+					<DialogHeader>
+						<DialogTitle>Audit Log Details</DialogTitle>
+					</DialogHeader>
+					{detailLoading ? (
+						<div className="py-8 flex justify-center">
+							<div className="size-8 border-2 border-violet-600 border-t-transparent rounded-full animate-spin" />
+						</div>
+					) : detailLog ? (
+						<div className="space-y-3 text-sm overflow-y-auto">
+							<div>
+								<span className="text-zinc-500 dark:text-zinc-400 font-medium">ID</span>
+								<p className="font-mono text-xs mt-0.5 break-all">{detailLog.id}</p>
+							</div>
+							<div className="grid grid-cols-2 gap-3">
+								<div>
+									<span className="text-zinc-500 dark:text-zinc-400 font-medium">Actor type</span>
+									<p className="mt-0.5">{detailLog.actorType}</p>
+								</div>
+								<div>
+									<span className="text-zinc-500 dark:text-zinc-400 font-medium">Actor ID</span>
+									<p className="font-mono text-xs mt-0.5 break-all">{detailLog.actorId ?? "—"}</p>
+								</div>
+								<div>
+									<span className="text-zinc-500 dark:text-zinc-400 font-medium">Actor</span>
+									<p className="mt-0.5">{detailLog.actorDisplayName ?? "—"}</p>
+								</div>
+								<div>
+									<span className="text-zinc-500 dark:text-zinc-400 font-medium">Action</span>
+									<p className="mt-0.5">
+										<Badge className={getActionColor(detailLog.action)} variant="secondary">
+											{detailLog.action}
+										</Badge>
+									</p>
+								</div>
+								<div>
+									<span className="text-zinc-500 dark:text-zinc-400 font-medium">Resource type</span>
+									<p className="mt-0.5">{detailLog.resourceType}</p>
+								</div>
+								<div>
+									<span className="text-zinc-500 dark:text-zinc-400 font-medium">Resource ID</span>
+									<p className="font-mono text-xs mt-0.5 break-all">{detailLog.resourceId ?? "—"}</p>
+								</div>
+							</div>
+							<div>
+								<span className="text-zinc-500 dark:text-zinc-400 font-medium">Created at</span>
+								<p className="mt-0.5">{new Date(detailLog.createdAt).toLocaleString()}</p>
+							</div>
+							{detailLog.ipAddress && (
+								<div>
+									<span className="text-zinc-500 dark:text-zinc-400 font-medium">IP address</span>
+									<p className="font-mono text-xs mt-0.5">{detailLog.ipAddress}</p>
+								</div>
+							)}
+							{detailLog.userAgent && (
+								<div>
+									<span className="text-zinc-500 dark:text-zinc-400 font-medium">User agent</span>
+									<p className="text-xs mt-0.5 break-all">{detailLog.userAgent}</p>
+								</div>
+							)}
+							{detailLog.oldValue != null && (
+								<div>
+									<span className="text-zinc-500 dark:text-zinc-400 font-medium">Old value</span>
+									<pre className="mt-0.5 p-2 rounded bg-zinc-100 dark:bg-zinc-800 text-xs overflow-x-auto max-h-32 overflow-y-auto">
+										{JSON.stringify(detailLog.oldValue, null, 2)}
+									</pre>
+								</div>
+							)}
+							{detailLog.newValue != null && (
+								<div>
+									<span className="text-zinc-500 dark:text-zinc-400 font-medium">New value</span>
+									<pre className="mt-0.5 p-2 rounded bg-zinc-100 dark:bg-zinc-800 text-xs overflow-x-auto max-h-32 overflow-y-auto">
+										{JSON.stringify(detailLog.newValue, null, 2)}
+									</pre>
+								</div>
+							)}
+							{detailLog.metadata != null && Object.keys(detailLog.metadata).length > 0 && (
+								<div>
+									<span className="text-zinc-500 dark:text-zinc-400 font-medium">Metadata</span>
+									<pre className="mt-0.5 p-2 rounded bg-zinc-100 dark:bg-zinc-800 text-xs overflow-x-auto max-h-32 overflow-y-auto">
+										{JSON.stringify(detailLog.metadata, null, 2)}
+									</pre>
+								</div>
+							)}
+						</div>
+					) : selectedLogId ? (
+						<p className="text-sm text-zinc-500 py-4">Failed to load log details.</p>
+					) : null}
+				</DialogContent>
+			</Dialog>
 		</div>
 	);
 }

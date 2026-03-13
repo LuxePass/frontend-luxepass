@@ -15,6 +15,7 @@ import { Avatar, AvatarFallback } from "../components/ui/avatar";
 import { Separator } from "../components/ui/separator";
 import { Sparkles, Send } from "lucide-react";
 import { cn } from "../utils";
+import { useAIContext } from "../context/AIContext";
 
 interface Message {
 	id: string;
@@ -39,6 +40,7 @@ export function AIAssistantModal({
 	open,
 	onOpenChange,
 }: AIAssistantModalProps) {
+	const aiContext = useAIContext();
 	const [messages, setMessages] = useState<Message[]>([
 		{
 			id: "1",
@@ -73,7 +75,11 @@ export function AIAssistantModal({
 		setIsLoading(true);
 
 		try {
-			const { data } = await api.post("/ai/chat", { message: currentInput });
+			const body: Record<string, unknown> = { message: currentInput };
+			if (aiContext?.conversationId) body.conversationId = aiContext.conversationId;
+			if (aiContext?.userIdentifier) body.userIdentifier = aiContext.userIdentifier;
+			if (aiContext?.includeCatalog) body.includeCatalog = true;
+			const { data } = await api.post("/ai/chat", body);
 
 			if (data.success && data.data && data.data.reply) {
 				const aiMessage: Message = {

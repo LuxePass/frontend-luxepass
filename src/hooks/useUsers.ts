@@ -104,6 +104,35 @@ export function useUsers() {
 		[request],
 	);
 
+	/**
+	 * Get clients for nav/Clients page: all users for SUPER_ADMIN/ADMIN, assigned only for PA/SENIOR_PA.
+	 * Pass current user role so the correct endpoint is called.
+	 */
+	const getClientsForNav = useCallback(
+		async (
+			params?: { page?: number; limit?: number; search?: string },
+			role?: string,
+		) => {
+			const isAdmin = role === "SUPER_ADMIN" || role === "ADMIN";
+			try {
+				return await request(
+					api.get(isAdmin ? "/users" : "/users/assigned", {
+						params: { ...params, limit: params?.limit ?? 100 },
+					})
+				);
+			} catch (error: unknown) {
+				const err = error as {
+					response?: { status?: number };
+				};
+				if (err?.response?.status === 403) {
+					return { data: [], meta: null };
+				}
+				throw error;
+			}
+		},
+		[request],
+	);
+
 	const getUserById = useCallback(async (id: string) => {
 		const response = await api.get(`/users/${id}`);
 		return response.data?.data;
@@ -164,6 +193,7 @@ export function useUsers() {
 		error: usersError, // Renamed
 		getAssignedUsers,
 		getAssignedUsersForBooking,
+		getClientsForNav,
 		getUserById,
 		getAllPAs,
 		createPA,

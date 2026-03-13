@@ -55,6 +55,7 @@ import {
 	CommandItem,
 	CommandList,
 } from "../components/ui/command";
+import { ListingDetailsModal, type ListingDetailsItem } from "../components/ListingDetailsModal";
 import { cn } from "../utils";
 
 type ListingItem = {
@@ -63,22 +64,50 @@ type ListingItem = {
 	description?: string;
 	address?: string;
 	city?: string;
+	state?: string;
+	country?: string;
+	propertyType?: string;
+	bedrooms?: number;
+	bathrooms?: number;
+	maxGuests?: number;
+	amenities?: string[];
 	pricePerNight?: number | string;
 	currency?: string;
 	media?: { url: string }[];
 };
 
+function listingToDetailsItem(l: ListingItem): ListingDetailsItem {
+	return {
+		id: l.id,
+		name: l.name,
+		description: l.description,
+		address: l.address,
+		city: l.city,
+		state: l.state,
+		country: l.country,
+		propertyType: l.propertyType,
+		bedrooms: l.bedrooms,
+		bathrooms: l.bathrooms,
+		maxGuests: l.maxGuests,
+		amenities: l.amenities,
+		pricePerNight: l.pricePerNight,
+		currency: l.currency,
+		media: l.media?.map((m) => ({ url: m.url })),
+	};
+}
+
 function PropertySearchCommand({
 	listings,
 	value,
 	onSelect,
+	onDetailsClick,
 }: {
 	listings: ListingItem[];
 	value: string;
 	onSelect: (id: string) => void;
+	onDetailsClick?: (listing: ListingItem) => void;
 }) {
 	const [filter, setFilter] = useState("");
-	const [expandedId, setExpandedId] = useState<string | null>(null);
 	const filtered = useMemo(() => {
 		if (!filter.trim()) return listings;
 		const q = filter.toLowerCase();
@@ -102,7 +131,6 @@ function PropertySearchCommand({
 				<CommandGroup>
 					{filtered.map((l) => {
 						const imgUrl = l.media?.[0]?.url;
-						const isExpanded = expandedId === l.id;
 						return (
 							<div key={l.id} className="flex flex-col gap-0">
 								<CommandItem
@@ -131,31 +159,11 @@ function PropertySearchCommand({
 										onClick={(e) => {
 											e.preventDefault();
 											e.stopPropagation();
-											setExpandedId(isExpanded ? null : l.id);
+											onDetailsClick?.(l);
 										}}>
-										{isExpanded ? "Hide" : "Details"}
+										Details
 									</Button>
 								</CommandItem>
-								{isExpanded && (
-									<div className="px-2 pb-2 pt-0 border-b border-zinc-100 dark:border-zinc-800 last:border-0">
-										{imgUrl && (
-											<img
-												src={imgUrl}
-												alt={l.name}
-												className="w-full max-h-32 rounded object-cover mb-2"
-											/>
-										)}
-										<p className="text-xs text-zinc-600 dark:text-zinc-400 line-clamp-3">
-											{l.description || "No description."}
-										</p>
-										{(l.address || l.city) && (
-											<p className="text-xs text-zinc-500 mt-1">
-												{l.address}
-												{l.city ? `, ${l.city}` : ""}
-											</p>
-										)}
-									</div>
-								)}
 							</div>
 						);
 					})}
@@ -198,6 +206,8 @@ export function Bookings() {
 	const [otpCode, setOtpCode] = useState("");
 	const [otpRequesting, setOtpRequesting] = useState(false);
 	const [canRequestOtp, setCanRequestOtp] = useState(false);
+	const [selectedListingForDetail, setSelectedListingForDetail] =
+		useState<ListingItem | null>(null);
 
 	useEffect(() => {
 		getBookings();
@@ -563,6 +573,7 @@ export function Bookings() {
 																	handleUpdateBookingRow(index, "propertyId", id);
 																	setPropertyPopoverOpenByIndex((prev) => ({ ...prev, [index]: false }));
 																}}
+																onDetailsClick={(l) => setSelectedListingForDetail(l)}
 															/>
 														</PopoverContent>
 													</Popover>
@@ -637,10 +648,11 @@ export function Bookings() {
 					<div className="p-4">
 						{loading ?
 							<div className="flex justify-center p-8">Loading...</div>
-						:	<Table>
+						:								<Table>
 								<TableHeader>
 									<TableRow>
 										<TableHead>ID</TableHead>
+										<TableHead>User</TableHead>
 										<TableHead>Type</TableHead>
 										<TableHead>Amount</TableHead>
 										<TableHead>Status</TableHead>
@@ -656,6 +668,11 @@ export function Bookings() {
 											onClick={() => setSelectedBooking(booking)}>
 											<TableCell className="font-mono text-xs">
 												{booking.id.substring(0, 8)}...
+											</TableCell>
+											<TableCell className="text-sm">
+												{booking.user
+													? `${booking.user.name} (${booking.user.uniqueId})`
+													: booking.userId}
 											</TableCell>
 											<TableCell>{booking.type}</TableCell>
 											<TableCell>
@@ -735,6 +752,14 @@ export function Bookings() {
 									<p className="font-mono text-sm">{selectedBooking.id}</p>
 								</div>
 								<div>
+									<h4 className="text-sm font-semibold text-zinc-500 mb-1">Assigned User</h4>
+									<p className="text-sm">
+										{selectedBooking.user
+											? `${selectedBooking.user.name} (${selectedBooking.user.uniqueId})`
+											: selectedBooking.userId}
+									</p>
+								</div>
+								<div>
 									<h4 className="text-sm font-semibold text-zinc-500 mb-1">Status</h4>
 									{getStatusBadge(selectedBooking.status)}
 								</div>
@@ -785,6 +810,12 @@ export function Bookings() {
 					)}
 				</DialogContent>
 			</Dialog>
+
+			<ListingDetailsModal
+				open={!!selectedListingForDetail}
+				onOpenChange={(open) => !open && setSelectedListingForDetail(null)}
+				listing={selectedListingForDetail ? listingToDetailsItem(selectedListingForDetail) : null}
+			/>
 		</div>
 	);
 }

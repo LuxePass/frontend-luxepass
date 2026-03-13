@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { ScrollArea } from "../components/ui/scroll-area";
 import { Badge } from "../components/ui/badge";
-import { Avatar, AvatarFallback } from "../components/ui/avatar";
 import { AdminProfile } from "./AdminProfile";
 import { useUsers } from "../hooks/useUsers";
 import {
@@ -19,6 +18,7 @@ import {
 	Activity,
 	User,
 	LayoutDashboard,
+	Megaphone,
 	Calendar,
 	Tag,
 	Wallet,
@@ -57,22 +57,15 @@ export function Sidebar({
 	activeTab,
 }: SidebarProps) {
 	const { user } = useAuth();
-	const { users, getAssignedUsers } = useUsers();
-	const [clientsExpanded, setClientsExpanded] = useState(false);
+	const { getClientsForNav } = useUsers();
+	const [clientCount, setClientCount] = useState(0);
 	const [toolsExpanded, setToolsExpanded] = useState(false);
 
 	useEffect(() => {
-		getAssignedUsers({ search: searchQuery });
-	}, [getAssignedUsers, searchQuery]);
-
-	const getInitials = (name: string) => {
-		if (!name) return "U";
-		return name
-			.split(" ")
-			.map((n) => n[0])
-			.join("")
-			.toUpperCase();
-	};
+		getClientsForNav({ limit: 500 }, user?.role)
+			.then((res) => setClientCount(res?.data?.length ?? 0))
+			.catch(() => setClientCount(0));
+	}, [getClientsForNav, user?.role]);
 
 	// Desktop version with full navigation
 	if (isDesktop) {
@@ -86,8 +79,7 @@ export function Sidebar({
 				id: "clients",
 				label: "Clients",
 				icon: Users,
-				badge: users.length,
-				expandable: true,
+				badge: clientCount,
 			},
 			{ id: "browser", label: "Browser", icon: Globe },
 			{
@@ -104,9 +96,14 @@ export function Sidebar({
 				{ id: "bookings", label: "Bookings", icon: Calendar },
 				{ id: "conceirg-bookings", label: "Concierge Bookings", icon: Tag },
 				{ id: "wallet", label: "Wallet", icon: Wallet },
-				{ id: "audit-logs", label: "Audit Logs", icon: Activity },
 				{ id: "permissions", label: "PA Permissions", icon: ShieldCheck },
 				{ id: "pa-management", label: "PA Management", icon: Users },
+			);
+		}
+		if (user?.role === "SUPER_ADMIN") {
+			navigationItems.push(
+				{ id: "audit-logs", label: "Audit Logs", icon: Activity },
+				{ id: "marketing", label: "Marketing", icon: Megaphone },
 			);
 		}
 
@@ -132,16 +129,13 @@ export function Sidebar({
 						{navigationItems.map((item) => {
 							const Icon = item.icon;
 							const isActive = activeTab === item.id;
-							const isClientsSection = item.id === "clients";
 							const isToolsSection = item.id === "tools";
 
 							return (
 								<div key={item.id}>
 									<button
 										onClick={() => {
-											if (isClientsSection) {
-												setClientsExpanded(!clientsExpanded);
-											} else if (isToolsSection) {
+											if (isToolsSection) {
 												setToolsExpanded(!toolsExpanded);
 											} else {
 												onNavigate?.(item.id);
@@ -155,71 +149,18 @@ export function Sidebar({
 										)}>
 										<Icon className="size-5 shrink-0" />
 										<span className="flex-1 text-left">{item.label}</span>
-										{item.badge !== undefined && !isClientsSection && (
+										{item.badge !== undefined && (
 											<Badge
 												variant="secondary"
 												className="bg-zinc-200 dark:bg-zinc-700 text-xs text-zinc-900 dark:text-zinc-100 border-none">
 												{item.badge}
 											</Badge>
 										)}
-										{isClientsSection && (
-											<div className="flex items-center gap-1">
-												<Badge
-													variant="secondary"
-													className="bg-zinc-200 dark:bg-zinc-700 text-xs text-zinc-900 dark:text-zinc-100 border-none">
-													{item.badge}
-												</Badge>
-												{clientsExpanded ?
-													<ChevronDown className="size-4" />
-												:	<ChevronRight className="size-4" />}
-											</div>
-										)}
 										{isToolsSection &&
 											(toolsExpanded ?
 												<ChevronDown className="size-4" />
 											:	<ChevronRight className="size-4" />)}
 									</button>
-
-									{/* Client List (shown when Clients is expanded) */}
-									{isClientsSection && clientsExpanded && (
-										<div className="ml-4 mt-1 space-y-1">
-											{users.map((client) => (
-												<button
-													key={client.id}
-													onClick={() => {
-														onSelectClient(client.id);
-													}}
-													className={cn(
-														"w-full p-2.5 rounded-lg text-left transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-800",
-														selectedClient === client.id &&
-															"bg-zinc-100 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 font-medium",
-													)}>
-													<div className="flex items-center gap-2">
-														<Avatar className="size-8 border border-zinc-200 dark:border-zinc-700">
-															<AvatarFallback className="bg-gradient-to-br from-violet-600 to-purple-600 text-white text-xs">
-																{getInitials(client.name)}
-															</AvatarFallback>
-														</Avatar>
-
-														<div className="flex-1 min-w-0">
-															<div className="flex items-center justify-between mb-0.5">
-																<p className="text-xs truncate font-medium">{client.name}</p>
-																{/* unreadCount placeholder */}
-															</div>
-															<p className="text-[10px] text-zinc-500 dark:text-zinc-400 truncate uppercase tracking-tighter">
-																{client.tier} • {client.status}
-															</p>
-														</div>
-													</div>
-												</button>
-											))}
-											{users.length === 0 && (
-												<p className="text-[10px] text-zinc-500 px-3 py-2 italic text-center">
-													No users found
-												</p>
-											)}
-										</div>
-									)}
 
 									{/* Tools List (shown when Tools is expanded) */}
 									{isToolsSection && toolsExpanded && (
@@ -269,7 +210,7 @@ export function Sidebar({
 			id: "clients",
 			label: "Clients",
 			icon: Users,
-			badge: users.length,
+			badge: clientCount,
 		},
 		{ id: "browser", label: "Browser", icon: Globe },
 		{ id: "referrals", label: "Referrals", icon: Network },
@@ -280,8 +221,13 @@ export function Sidebar({
 			{ id: "bookings", label: "Bookings", icon: Calendar },
 			{ id: "concierge", label: "Concierge", icon: Tag },
 			{ id: "wallet", label: "Wallet", icon: Wallet },
-			{ id: "audit-logs", label: "Audit Logs", icon: Activity },
 			{ id: "permissions", label: "PA Permissions", icon: ShieldCheck },
+		);
+	}
+	if (user?.role === "SUPER_ADMIN") {
+		mobileNavigationItems.push(
+			{ id: "audit-logs", label: "Audit Logs", icon: Activity },
+			{ id: "marketing", label: "Marketing", icon: Megaphone },
 		);
 	}
 

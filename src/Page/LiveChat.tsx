@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "../components/ui/card";
 import { useAuth } from "../hooks/useAuth";
+import { useAIContext } from "../context/AIContext";
 import api from "../services/api";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -41,6 +42,8 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "../components/ui/dialog";
+import { ListingDetailsModal } from "../components/ListingDetailsModal";
+import { ConciergeDetailsModal } from "../components/ConciergeDetailsModal";
 
 interface ChatMessage {
 	id: string;
@@ -114,10 +117,31 @@ export function LiveChat() {
 			price?: string;
 			currency?: string;
 			mediaUrl?: string;
+			description?: string;
 		}>
 	>([]);
 	const [listingSearch, setListingSearch] = useState("");
 	const [conciergeSearch, setConciergeSearch] = useState("");
+	const [selectedListingForDetail, setSelectedListingForDetail] = useState<{
+		id: string;
+		name: string;
+		propertyType?: string;
+		pricePerNight?: number;
+		currency?: string;
+		city?: string;
+		address?: string;
+		description?: string;
+		media?: Array<{ url: string }>;
+	} | null>(null);
+	const [selectedConciergeForDetail, setSelectedConciergeForDetail] = useState<{
+		id: string;
+		name: string;
+		category?: string;
+		price?: string;
+		currency?: string;
+		mediaUrl?: string;
+		description?: string;
+	} | null>(null);
 	const [transferSearch, setTransferSearch] = useState("");
 	const [sendingOffer, setSendingOffer] = useState(false);
 	const [transferOpen, setTransferOpen] = useState(false);
@@ -278,6 +302,22 @@ export function LiveChat() {
 	);
 
 	const selectedConv = conversations.find((c) => c.id === selectedConversation);
+	const setAIContext = useAIContext()?.setAIContext;
+
+	// When viewing a conversation, set AI context so the assistant can use conversation + catalog
+	useEffect(() => {
+		if (!setAIContext) return;
+		if (selectedConversation && selectedConv) {
+			setAIContext({
+				conversationId: selectedConversation,
+				userIdentifier: selectedConv.clientPhone ?? selectedConversation,
+				includeCatalog: true,
+			});
+		} else {
+			setAIContext({ conversationId: null, userIdentifier: null, includeCatalog: false });
+		}
+	}, [selectedConversation, selectedConv, setAIContext]);
+
 	const selectedMessages = useMemo(() => {
 		return selectedConversation ? (messages[selectedConversation] ?? []) : [];
 	}, [selectedConversation, messages]);
@@ -1880,33 +1920,48 @@ export function LiveChat() {
 									const price = `${sym}${Number(l.pricePerNight || 0).toLocaleString()}/night`;
 									const imgUrl = l.media?.[0]?.url;
 									return (
-										<button
+										<div
 											key={l.id}
-											type="button"
-											disabled={sendingOffer}
-											onClick={() => void sendOffer("listing", l.id)}
-											className="w-full text-left rounded-xl p-3 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800/80 transition-colors flex items-center gap-3">
-											<div className="size-14 shrink-0 rounded-lg bg-zinc-200 dark:bg-zinc-700 overflow-hidden">
-												{imgUrl ?
-													<img
-														src={imgUrl}
-														alt=""
-														className="size-full object-cover"
-													/>
-												:	<div className="size-full flex items-center justify-center">
-														<ImageIcon className="size-6 text-zinc-400" />
-													</div>
-												}
-											</div>
-											<div className="min-w-0 flex-1">
-												<p className="text-sm font-medium truncate">
-													{l.name || "Listing"}
-												</p>
-												<p className="text-xs text-zinc-500">
-													{l.propertyType ?? ""} · {price}
-												</p>
-											</div>
-										</button>
+											className="w-full rounded-xl p-3 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800/80 transition-colors flex items-center gap-3">
+											<button
+												type="button"
+												disabled={sendingOffer}
+												onClick={() => void sendOffer("listing", l.id)}
+												className="flex-1 min-w-0 flex items-center gap-3 text-left">
+												<div className="size-14 shrink-0 rounded-lg bg-zinc-200 dark:bg-zinc-700 overflow-hidden">
+													{imgUrl ?
+														<img
+															src={imgUrl}
+															alt=""
+															className="size-full object-cover"
+														/>
+													:	<div className="size-full flex items-center justify-center">
+															<ImageIcon className="size-6 text-zinc-400" />
+														</div>
+													}
+												</div>
+												<div className="min-w-0 flex-1">
+													<p className="text-sm font-medium truncate">
+														{l.name || "Listing"}
+													</p>
+													<p className="text-xs text-zinc-500">
+														{l.propertyType ?? ""} · {price}
+													</p>
+												</div>
+											</button>
+											<Button
+												type="button"
+												variant="outline"
+												size="sm"
+												className="shrink-0"
+												onClick={(e) => {
+													e.preventDefault();
+													e.stopPropagation();
+													setSelectedListingForDetail(l);
+												}}>
+												Details
+											</Button>
+										</div>
 									);
 								})}
 						</div>
@@ -1955,39 +2010,91 @@ export function LiveChat() {
 									const price = `${sym}${Number(item.price || 0).toLocaleString()}`;
 									const imgUrl = item.mediaUrl;
 									return (
-										<button
+										<div
 											key={item.id}
-											type="button"
-											disabled={sendingOffer}
-											onClick={() => void sendOffer("concierge", item.id)}
-											className="w-full text-left rounded-xl p-3 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800/80 transition-colors flex items-center gap-3">
-											<div className="size-14 shrink-0 rounded-lg bg-zinc-200 dark:bg-zinc-700 overflow-hidden">
-												{imgUrl ?
-													<img
-														src={imgUrl}
-														alt=""
-														className="size-full object-cover"
-													/>
-												:	<div className="size-full flex items-center justify-center">
-														<ImageIcon className="size-6 text-zinc-400" />
-													</div>
-												}
-											</div>
-											<div className="min-w-0 flex-1">
-												<p className="text-sm font-medium truncate">
-													{item.name || "Concierge"}
-												</p>
-												<p className="text-xs text-zinc-500">
-													{item.category ?? ""} · {price}
-												</p>
-											</div>
-										</button>
+											className="w-full rounded-xl p-3 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800/80 transition-colors flex items-center gap-3">
+											<button
+												type="button"
+												disabled={sendingOffer}
+												onClick={() => void sendOffer("concierge", item.id)}
+												className="flex-1 min-w-0 flex items-center gap-3 text-left">
+												<div className="size-14 shrink-0 rounded-lg bg-zinc-200 dark:bg-zinc-700 overflow-hidden">
+													{imgUrl ?
+														<img
+															src={imgUrl}
+															alt=""
+															className="size-full object-cover"
+														/>
+													:	<div className="size-full flex items-center justify-center">
+															<ImageIcon className="size-6 text-zinc-400" />
+														</div>
+													}
+												</div>
+												<div className="min-w-0 flex-1">
+													<p className="text-sm font-medium truncate">
+														{item.name || "Concierge"}
+													</p>
+													<p className="text-xs text-zinc-500">
+														{item.category ?? ""} · {price}
+													</p>
+												</div>
+											</button>
+											<Button
+												type="button"
+												variant="outline"
+												size="sm"
+												className="shrink-0"
+												onClick={(e) => {
+													e.preventDefault();
+													e.stopPropagation();
+													setSelectedConciergeForDetail(item);
+												}}>
+												Details
+											</Button>
+										</div>
 									);
 								})}
 						</div>
 					</ScrollArea>
 				</DialogContent>
 			</Dialog>
+
+			<ListingDetailsModal
+				open={!!selectedListingForDetail}
+				onOpenChange={(open) => !open && setSelectedListingForDetail(null)}
+				listing={
+					selectedListingForDetail
+						? {
+								id: selectedListingForDetail.id,
+								name: selectedListingForDetail.name,
+								propertyType: selectedListingForDetail.propertyType,
+								pricePerNight: selectedListingForDetail.pricePerNight,
+								currency: selectedListingForDetail.currency,
+								city: selectedListingForDetail.city,
+								address: selectedListingForDetail.address,
+								description: selectedListingForDetail.description,
+								media: selectedListingForDetail.media,
+							}
+						: null
+				}
+			/>
+			<ConciergeDetailsModal
+				open={!!selectedConciergeForDetail}
+				onOpenChange={(open) => !open && setSelectedConciergeForDetail(null)}
+				item={
+					selectedConciergeForDetail
+						? {
+								id: selectedConciergeForDetail.id,
+								name: selectedConciergeForDetail.name,
+								category: selectedConciergeForDetail.category,
+								price: selectedConciergeForDetail.price,
+								currency: selectedConciergeForDetail.currency,
+								mediaUrl: selectedConciergeForDetail.mediaUrl,
+								description: selectedConciergeForDetail.description,
+							}
+						: null
+				}
+			/>
 		</Card>
 	);
 }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "../components/ui/button";
 import {
 	Sheet,
@@ -10,75 +10,89 @@ import {
 import { ScrollArea } from "../components/ui/scroll-area";
 import { Badge } from "../components/ui/badge";
 import { Separator } from "../components/ui/separator";
-import { Bell, CheckCircle2, AlertCircle, Info, X } from "lucide-react";
+import { Bell, CheckCircle2, AlertCircle, Info, UserPlus } from "lucide-react";
 import { cn } from "../utils";
+import { useNotifications, NOTIFICATION_POLL_INTERVAL_MS } from "../hooks/useNotifications";
 
-interface Notification {
-	id: string;
-	type: "success" | "warning" | "info";
-	title: string;
-	message: string;
-	time: string;
-	read: boolean;
+function formatTimeAgo(createdAt: string): string {
+	const d = new Date(createdAt);
+	const now = new Date();
+	const diffMs = now.getTime() - d.getTime();
+	const diffMins = Math.floor(diffMs / 60_000);
+	const diffHours = Math.floor(diffMs / 3_600_000);
+	const diffDays = Math.floor(diffMs / 86_400_000);
+	if (diffMins < 1) return "Just now";
+	if (diffMins < 60) return `${diffMins} min ago`;
+	if (diffHours < 24) return `${diffHours} hour ago`;
+	if (diffDays < 7) return `${diffDays} day ago`;
+	return d.toLocaleDateString();
 }
 
-const mockNotifications: Notification[] = [
-	{
-		id: "1",
-		type: "warning",
-		title: "Urgent Task Due",
-		message: "Restaurant reservation for Chidinma Okonkwo due in 2 hours",
-		time: "2 min ago",
-		read: false,
-	},
-	{
-		id: "2",
-		type: "success",
-		title: "Task Completed",
-		message: "Wine collection delivery confirmed for Chukwudi Okafor",
-		time: "1 hour ago",
-		read: false,
-	},
-	{
-		id: "3",
-		type: "info",
-		title: "New Client Message",
-		message: "Emeka Adeleke sent a message about property viewing in Lekki",
-		time: "2 hours ago",
-		read: true,
-	},
-	{
-		id: "4",
-		type: "success",
-		title: "Booking Confirmed",
-		message: "Private jet booking confirmed for Amara Nwosu",
-		time: "3 hours ago",
-		read: true,
-	},
-];
+function playNotificationSound(): void {
+	try {
+		const audio = new Audio("/notification.mp3");
+		audio.volume = 0.5;
+		audio.play().catch(() => {});
+	} catch {
+		// no sound if file missing or autoplay blocked
+	}
+}
 
 export function NotificationBell() {
-	const [notifications, setNotifications] = useState(mockNotifications);
+	const {
+		notifications,
+		unreadCount,
+		loading,
+		fetchNotifications,
+		markAsRead,
+		markAllRead,
+	} = useNotifications();
 	const [isOpen, setIsOpen] = useState(false);
+	const prevUnreadRef = useRef(0);
+	const hasFetchedRef = useRef(false);
 
-	const unreadCount = notifications.filter((n) => !n.read).length;
+	useEffect(() => {
+		fetchNotifications();
+		hasFetchedRef.current = true;
+	}, [fetchNotifications]);
+
+	useEffect(() => {
+		if (isOpen) fetchNotifications();
+	}, [isOpen, fetchNotifications]);
+
+	useEffect(() => {
+		const interval = setInterval(() => {
+			fetchNotifications();
+		}, NOTIFICATION_POLL_INTERVAL_MS);
+		return () => clearInterval(interval);
+	}, [fetchNotifications]);
+
+	// Play sound when unread count increases (e.g. new assignment)
+	useEffect(() => {
+		if (hasFetchedRef.current && unreadCount > prevUnreadRef.current) {
+			playNotificationSound();
+		}
+		prevUnreadRef.current = unreadCount;
+	}, [unreadCount]);
 
 	const handleMarkAsRead = (id: string) => {
-		setNotifications(
-			notifications.map((n) => (n.id === id ? { ...n, read: true } : n))
-		);
-	};
-
-	const handleDismiss = (id: string) => {
-		setNotifications(notifications.filter((n) => n.id !== id));
+		markAsRead(id);
 	};
 
 	const handleMarkAllRead = () => {
-		setNotifications(notifications.map((n) => ({ ...n, read: true })));
+		markAllRead();
 	};
 
 	const getIcon = (type: string) => {
 		switch (type) {
+			case "pa_assigned":
+				return (
+					<UserPlus className="size-4 text-violet-600 dark:text-violet-400" />
+				);
+			case "transfer_request":
+				return (
+					<AlertCircle className="size-4 text-orange-600 dark:text-orange-400" />
+				);
 			case "success":
 				return (
 					<CheckCircle2 className="size-4 text-green-600 dark:text-green-400" />
@@ -90,12 +104,16 @@ export function NotificationBell() {
 			case "info":
 				return <Info className="size-4 text-blue-600 dark:text-blue-400" />;
 			default:
-				return null;
+				return <Info className="size-4 text-blue-600 dark:text-blue-400" />;
 		}
 	};
 
 	const getTypeColor = (type: string) => {
 		switch (type) {
+			case "pa_assigned":
+				return "bg-violet-50 dark:bg-violet-950/50 border-violet-200 dark:border-violet-900";
+			case "transfer_request":
+				return "bg-orange-50 dark:bg-orange-950/50 border-orange-200 dark:border-orange-900";
 			case "success":
 				return "bg-green-50 dark:bg-green-950/50 border-green-200 dark:border-green-900";
 			case "warning":
@@ -103,9 +121,11 @@ export function NotificationBell() {
 			case "info":
 				return "bg-blue-50 dark:bg-blue-950/50 border-blue-200 dark:border-blue-900";
 			default:
-				return "";
+				return "bg-zinc-50 dark:bg-zinc-800/50 border-zinc-200 dark:border-zinc-700";
 		}
 	};
+
+	const read = (n: { readAt: string | null }) => !!n.readAt;
 
 	return (
 		<>
@@ -148,7 +168,11 @@ export function NotificationBell() {
 
 					<ScrollArea className="h-[calc(100vh-5rem)]">
 						<div className="p-3">
-							{notifications.length === 0 ? (
+							{loading && notifications.length === 0 ? (
+								<div className="p-8 flex justify-center">
+									<div className="size-8 border-2 border-violet-600 border-t-transparent rounded-full animate-spin" />
+								</div>
+							) : notifications.length === 0 ? (
 								<div className="p-8 text-center">
 									<Bell className="size-12 mx-auto mb-3 text-zinc-300 dark:text-zinc-700" />
 									<p className="text-zinc-400 dark:text-zinc-400">No notifications</p>
@@ -159,7 +183,7 @@ export function NotificationBell() {
 										<div
 											className={cn(
 												"p-3 rounded-lg cursor-pointer transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-800/50 relative",
-												!notification.read && "bg-zinc-100 dark:bg-zinc-800/30"
+												!read(notification) && "bg-zinc-100 dark:bg-zinc-800/30"
 											)}
 											onClick={() => handleMarkAsRead(notification.id)}>
 											<div className="flex gap-3">
@@ -173,26 +197,16 @@ export function NotificationBell() {
 
 												<div className="flex-1 min-w-0">
 													<div className="flex items-start justify-between gap-2 mb-1">
-														<p className="text-sm">{notification.title}</p>
-														<Button
-															variant="ghost"
-															size="sm"
-															className="size-6 p-0 hover:bg-zinc-200 dark:hover:bg-zinc-700 shrink-0"
-															onClick={(e) => {
-																e.stopPropagation();
-																handleDismiss(notification.id);
-															}}>
-															<X className="size-3" />
-														</Button>
+														<p className="text-sm font-medium">{notification.title}</p>
 													</div>
 													<p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2 leading-relaxed">
-														{notification.message}
+														{notification.body ?? notification.title}
 													</p>
 													<div className="flex items-center gap-2">
 														<span className="text-xs text-zinc-500 dark:text-zinc-500">
-															{notification.time}
+															{formatTimeAgo(notification.createdAt)}
 														</span>
-														{!notification.read && (
+														{!read(notification) && (
 															<div className="size-1.5 rounded-full bg-violet-500" />
 														)}
 													</div>

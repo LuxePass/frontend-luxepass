@@ -54,6 +54,10 @@ import {
 	CommandItem,
 	CommandList,
 } from "../components/ui/command";
+import {
+	ConciergeDetailsModal,
+	type ConciergeDetailsItem,
+} from "../components/ConciergeDetailsModal";
 
 export function ConciergeBookings() {
 	const {
@@ -69,8 +73,18 @@ export function ConciergeBookings() {
 	const [statusFilter] = useState("all");
 	const [selectedUserId, setSelectedUserId] = useState("");
 	const [conciergeItems, setConciergeItems] = useState<
-		{ id: string; name: string; price: string; currency: string }[]
+		{
+			id: string;
+			name: string;
+			price: string;
+			currency: string;
+			description?: string;
+			category?: string;
+			mediaUrl?: string | null;
+		}[]
 	>([]);
+	const [selectedConciergeForDetail, setSelectedConciergeForDetail] =
+		useState<ConciergeDetailsItem | null>(null);
 	const [createOpen, setCreateOpen] = useState(false);
 	const [newBookings, setNewBookings] = useState([
 		{
@@ -96,10 +110,10 @@ export function ConciergeBookings() {
 		// Fetch Concierge Items
 		const fetchConciergeItems = async () => {
 			try {
-				const res = await api.get("/concierge");
-				if (res.data?.success) {
-					setConciergeItems(res.data.data.data || []);
-				}
+				const res = await api.get("/concierge", { params: { limit: 200 } });
+				const raw = res.data?.data ?? res.data;
+				const list = Array.isArray(raw) ? raw : raw?.data ?? [];
+				setConciergeItems(list);
 			} catch (e) {
 				console.error(e);
 			}
@@ -502,9 +516,32 @@ export function ConciergeBookings() {
 																						...prev,
 																						[index]: false,
 																					}));
-																				}}>
-																				{item.name} — {parseFloat(item.price).toLocaleString()}{" "}
-																				{item.currency}
+																				}}
+																				className="flex items-center gap-3 py-2">
+																				<span className="flex-1 truncate">
+																					{item.name} — {parseFloat(item.price).toLocaleString()}{" "}
+																					{item.currency}
+																				</span>
+																				<Button
+																					type="button"
+																					variant="ghost"
+																					size="sm"
+																					className="h-7 shrink-0"
+																					onClick={(e) => {
+																						e.preventDefault();
+																						e.stopPropagation();
+																						setSelectedConciergeForDetail({
+																							id: item.id,
+																							name: item.name,
+																							description: item.description,
+																							price: item.price,
+																							currency: item.currency,
+																							category: item.category,
+																							mediaUrl: item.mediaUrl,
+																						});
+																					}}>
+																					Details
+																				</Button>
 																			</CommandItem>
 																		))}
 																	</CommandGroup>
@@ -558,10 +595,11 @@ export function ConciergeBookings() {
 					<div className="p-4">
 						{loading ?
 							<div className="flex justify-center p-8">Loading...</div>
-						:	<Table>
+						:								<Table>
 								<TableHeader>
 									<TableRow>
 										<TableHead>ID</TableHead>
+										<TableHead>User</TableHead>
 										<TableHead>Type</TableHead>
 										<TableHead>Amount</TableHead>
 										<TableHead>Status</TableHead>
@@ -577,6 +615,11 @@ export function ConciergeBookings() {
 											onClick={() => setSelectedBooking(booking)}>
 											<TableCell className="font-mono text-xs">
 												{booking.id.substring(0, 8)}...
+											</TableCell>
+											<TableCell className="text-sm">
+												{booking.user
+													? `${booking.user.name} (${booking.user.uniqueId})`
+													: booking.userId}
 											</TableCell>
 											<TableCell>{booking.type}</TableCell>
 											<TableCell>
@@ -657,6 +700,14 @@ export function ConciergeBookings() {
 									<p className="font-mono text-sm">{selectedBooking.id}</p>
 								</div>
 								<div>
+									<h4 className="text-sm font-semibold text-zinc-500 mb-1">Assigned User</h4>
+									<p className="text-sm">
+										{selectedBooking.user
+											? `${selectedBooking.user.name} (${selectedBooking.user.uniqueId})`
+											: selectedBooking.userId}
+									</p>
+								</div>
+								<div>
 									<h4 className="text-sm font-semibold text-zinc-500 mb-1">Status</h4>
 									{getStatusBadge(selectedBooking.status)}
 								</div>
@@ -707,6 +758,12 @@ export function ConciergeBookings() {
 					)}
 				</DialogContent>
 			</Dialog>
+
+			<ConciergeDetailsModal
+				open={!!selectedConciergeForDetail}
+				onOpenChange={(open) => !open && setSelectedConciergeForDetail(null)}
+				item={selectedConciergeForDetail}
+			/>
 		</div>
 	);
 }

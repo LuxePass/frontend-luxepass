@@ -12,6 +12,7 @@ import { ListingManagement } from "./Page/ListingManagement";
 import { LiveChat } from "./Page/LiveChat";
 import { ReferralProgram } from "./Page/ReferralProgram";
 import { AuditLogs } from "./Page/AuditLogs";
+import { Marketing } from "./Page/Marketing";
 import { PermissionManager } from "./Page/PermissionManager";
 import { PAManager } from "./Page/PAManager";
 import { Bookings } from "./Page/Bookings";
@@ -83,6 +84,21 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
 		user?.role !== "SENIOR_PA" &&
 		user?.role !== "PA"
 	) {
+		return (
+			<Navigate
+				to="/dashboard"
+				replace
+			/>
+		);
+	}
+
+	return <>{children}</>;
+}
+
+function SuperAdminGuard({ children }: { children: React.ReactNode }) {
+	const { user } = useAuth();
+
+	if (user?.role !== "SUPER_ADMIN") {
 		return (
 			<Navigate
 				to="/dashboard"
@@ -209,9 +225,17 @@ function App() {
 							<Route
 								path="audit-logs"
 								element={
-									<AdminGuard>
+									<SuperAdminGuard>
 										<AuditLogs />
-									</AdminGuard>
+									</SuperAdminGuard>
+								}
+							/>
+							<Route
+								path="marketing"
+								element={
+									<SuperAdminGuard>
+										<Marketing />
+									</SuperAdminGuard>
 								}
 							/>
 							<Route

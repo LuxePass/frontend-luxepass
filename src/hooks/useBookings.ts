@@ -2,9 +2,16 @@ import { useCallback, useState } from "react";
 import api from "../services/api";
 import { useApi } from "./useApi";
 
+export interface BookingUserSummary {
+	id: string;
+	uniqueId: string;
+	name: string;
+}
+
 export interface Booking {
 	id: string;
 	userId: string;
+	user?: BookingUserSummary;
 	type: "SHORTLET" | "FLIGHT" | "CONCIERGE";
 	status: "INQUIRY" | "CONFIRMED" | "CANCELLED" | "COMPLETED";
 	propertyId?: string;

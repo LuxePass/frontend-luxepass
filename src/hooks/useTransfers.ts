@@ -18,6 +18,8 @@ export interface PendingTransfer {
 	reference: string;
 	userId: string;
 	userUniqueId: string;
+	userName?: string;
+	assignedPaId?: string;
 	amount: string;
 	currency: string;
 	recipientBankName: string;
@@ -26,6 +28,17 @@ export interface PendingTransfer {
 	narration?: string;
 	createdAt: string;
 	expiresAt: string;
+}
+
+/** Full transfer detail (e.g. from GET /transfers/detail/:id) */
+export interface TransferDetail extends Transfer {
+	user?: { id: string; uniqueId: string; name: string | null };
+	rejectedAt?: string | null;
+	rejectionReason?: string | null;
+	expiresAt?: string | null;
+	recipientBankName?: string;
+	recipientAccountNumber?: string;
+	recipientName?: string;
 }
 
 export function useTransfers() {
@@ -54,14 +67,9 @@ export function useTransfers() {
 		[request],
 	);
 
-	const approveTransfer = useCallback(async (id: string, notes?: string) => {
-		const response = await api.patch(`/transfers/${id}/approve`, { notes });
-		return response.data?.data;
-	}, []);
-
-	const rejectTransfer = useCallback(async (id: string, notes?: string) => {
-		const response = await api.patch(`/transfers/${id}/reject`, { notes });
-		return response.data?.data;
+	const rejectTransfer = useCallback(async (id: string, reason?: string) => {
+		const response = await api.patch(`/transfers/${id}/reject`, { reason });
+		return response.data?.data ?? response.data;
 	}, []);
 
 	const {
@@ -83,8 +91,18 @@ export function useTransfers() {
 
 	const executeEmergencyTransfer = useCallback(async (id: string) => {
 		const response = await api.post(`/transfers/${id}/execute`);
-		return response.data?.data;
+		return response.data?.data ?? response.data;
 	}, []);
+
+	const { data: detailData, loading: detailLoading, request: requestDetail } = useApi<TransferDetail>();
+
+	const getTransferById = useCallback(
+		async (id: string) => {
+			const res = await requestDetail(api.get(`/transfers/detail/${id}`));
+			return res;
+		},
+		[requestDetail],
+	);
 
 	return {
 		transfers: data?.data || [],
@@ -92,11 +110,13 @@ export function useTransfers() {
 		loading,
 		error,
 		getTransfers,
-		approveTransfer,
 		rejectTransfer,
 		pendingTransfers: pendingData ?? [],
 		pendingLoading,
 		getPendingTransfers,
 		executeEmergencyTransfer,
+		getTransferById,
+		transferDetail: detailData ?? null,
+		transferDetailLoading: detailLoading,
 	};
 }

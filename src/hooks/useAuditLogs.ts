@@ -43,11 +43,22 @@ export function useAuditLogs() {
 		[request]
 	);
 
+	const getAuditLogById = useCallback(async (id: string): Promise<AuditLog | null> => {
+		try {
+			const res = await api.get(`/audit/${id}`);
+			const raw = res.data?.data ?? res.data;
+			return raw ?? null;
+		} catch {
+			return null;
+		}
+	}, []);
+
 	return {
 		logs: data?.data || [],
 		meta: data?.meta,
 		loading,
 		error,
 		getAuditLogs,
+		getAuditLogById,
 	};
 }
