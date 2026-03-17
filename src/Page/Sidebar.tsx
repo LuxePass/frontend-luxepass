@@ -62,7 +62,7 @@ export function Sidebar({
 	const [toolsExpanded, setToolsExpanded] = useState(false);
 
 	useEffect(() => {
-		getClientsForNav({ limit: 500 }, user?.role)
+		getClientsForNav({ limit: 100 }, user?.role)
 			.then((res) => setClientCount(res?.data?.length ?? 0))
 			.catch(() => setClientCount(0));
 	}, [getClientsForNav, user?.role]);

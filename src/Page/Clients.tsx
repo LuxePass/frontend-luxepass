@@ -27,10 +27,7 @@ export function Clients() {
 
 	useEffect(() => {
 		setLoading(true);
-		getClientsForNav(
-			{ limit: 500, search: search || undefined },
-			user?.role,
-		)
+		getClientsForNav({ limit: 100, search: search || undefined }, user?.role)
 			.then((res) => {
 				setClients(res?.data ?? []);
 			})
@@ -44,9 +41,9 @@ export function Clients() {
 				<div>
 					<h2 className="text-2xl font-bold tracking-tight">Clients</h2>
 					<p className="text-sm text-zinc-500 dark:text-zinc-400">
-						{user?.role === "SUPER_ADMIN" || user?.role === "ADMIN"
-							? "All clients"
-							: "Clients assigned to you"}
+						{user?.role === "SUPER_ADMIN" || user?.role === "ADMIN" ?
+							"All clients"
+						:	"Clients assigned to you"}
 					</p>
 				</div>
 				<div className="relative w-full sm:w-64">
@@ -61,32 +58,30 @@ export function Clients() {
 			</div>
 
 			<Card className="flex-1 overflow-hidden bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 shadow-none flex flex-col">
-				{loading ? (
+				{loading ?
 					<div className="flex-1 flex items-center justify-center p-8">
 						<div className="size-8 border-2 border-violet-600 border-t-transparent rounded-full animate-spin" />
 					</div>
-				) : clients.length === 0 ? (
+				: clients.length === 0 ?
 					<div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
 						<Users className="size-16 mb-4 text-zinc-300 dark:text-zinc-700" />
 						<h3 className="text-xl mb-2 text-zinc-600 dark:text-zinc-400">
 							No clients found
 						</h3>
 						<p className="text-sm text-zinc-500 dark:text-zinc-500">
-							{user?.role === "SUPER_ADMIN" || user?.role === "ADMIN"
-								? "No users in the system yet."
-								: "No clients are assigned to you."}
+							{user?.role === "SUPER_ADMIN" || user?.role === "ADMIN" ?
+								"No users in the system yet."
+							:	"No clients are assigned to you."}
 						</p>
 					</div>
-				) : (
-					<div className="overflow-auto p-4">
+				:	<div className="overflow-auto p-4">
 						<div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
 							{clients.map((client) => (
 								<button
 									key={client.id}
 									type="button"
 									onClick={() => navigate(`/clients/${client.id}`)}
-									className="flex items-center gap-3 p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors text-left w-full"
-								>
+									className="flex items-center gap-3 p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors text-left w-full">
 									<Avatar className="size-10 border border-zinc-200 dark:border-zinc-700 shrink-0">
 										<AvatarFallback className="bg-gradient-to-br from-violet-600 to-purple-600 text-white text-sm">
 											{getInitials(client.name)}
@@ -100,14 +95,12 @@ export function Clients() {
 										<div className="flex items-center gap-1.5 mt-1">
 											<Badge
 												variant="secondary"
-												className="text-[10px] font-normal"
-											>
+												className="text-[10px] font-normal">
 												{client.tier}
 											</Badge>
 											<Badge
 												variant="outline"
-												className="text-[10px] font-normal border-zinc-300 dark:border-zinc-700"
-											>
+												className="text-[10px] font-normal border-zinc-300 dark:border-zinc-700">
 												{client.status}
 											</Badge>
 										</div>
@@ -116,7 +109,7 @@ export function Clients() {
 							))}
 						</div>
 					</div>
-				)}
+				}
 			</Card>
 		</div>
 	);
