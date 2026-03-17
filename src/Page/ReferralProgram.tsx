@@ -2,6 +2,7 @@ import { cn } from "../utils";
 import { customToast } from "./CustomToast";
 
 import { useState, useEffect } from "react";
+import { useAuth } from "../hooks/useAuth";
 import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -110,14 +111,24 @@ export function ReferralProgram() {
 		growthPercentage: 0,
 	});
 
+	const { user } = useAuth();
+
 	// Fetch data from whatsapp-backend
 	useEffect(() => {
 		const fetchReferralData = async () => {
+			if (!user) return;
+
 			try {
 				const backendUrl =
 					import.meta.env.VITE_WHATSAPP_BACKEND_URL ||
 					"https://mysound-whatsapp-backend.onrender.com/api";
-				const response = await fetch(`${backendUrl}/referrals/stats`);
+
+				const query = new URLSearchParams({
+					paId: user.id,
+					role: user.role,
+				});
+
+				const response = await fetch(`${backendUrl}/referrals/stats?${query}`);
 				const data = await response.json();
 
 				if (data.success) {
@@ -194,7 +205,12 @@ export function ReferralProgram() {
 				import.meta.env.VITE_WHATSAPP_BACKEND_URL ||
 				"https://mysound-whatsapp-backend.onrender.com/api";
 
-			const response = await fetch(`${backendUrl}/referrals/process`, {
+			const query = new URLSearchParams({
+				paId: user?.id || "",
+				role: user?.role || "",
+			});
+
+			const response = await fetch(`${backendUrl}/referrals/process?${query}`, {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",

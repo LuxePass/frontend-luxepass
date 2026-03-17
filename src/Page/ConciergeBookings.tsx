@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useAuth } from "../hooks/useAuth";
 import { useBookings, type Booking } from "../hooks/useBookings";
 import { Card } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
@@ -60,6 +61,7 @@ import {
 } from "../components/ConciergeDetailsModal";
 
 export function ConciergeBookings() {
+	const { user } = useAuth();
 	const {
 		bookings,
 		loading,
@@ -68,7 +70,7 @@ export function ConciergeBookings() {
 		confirmBooking,
 		updateBookingInList,
 	} = useBookings();
-	const { users, getAssignedUsersForBooking } = useUsers();
+	const { users, getClientsForNav } = useUsers();
 	const [searchQuery, setSearchQuery] = useState("");
 	const [statusFilter] = useState("all");
 	const [selectedUserId, setSelectedUserId] = useState("");
@@ -105,29 +107,34 @@ export function ConciergeBookings() {
 
 	useEffect(() => {
 		getBookings({ type: "CONCIERGE" });
-		getAssignedUsersForBooking();
+		if (user) {
+			getClientsForNav({ limit: 100 }, user.role);
+		}
 
 		// Fetch Concierge Items
 		const fetchConciergeItems = async () => {
 			try {
 				const res = await api.get("/concierge", { params: { limit: 200 } });
 				const raw = res.data?.data ?? res.data;
-				const list = Array.isArray(raw) ? raw : raw?.data ?? [];
+				const list = Array.isArray(raw) ? raw : (raw?.data ?? []);
 				setConciergeItems(list);
 			} catch (e) {
 				console.error(e);
 			}
 		};
 		fetchConciergeItems();
-	}, [getBookings, getAssignedUsersForBooking]);
+	}, [getBookings, getClientsForNav, user]);
 
 	useEffect(() => {
-		if (!createOpen) return;
+		if (!createOpen || !user) return;
 		const t = setTimeout(() => {
-			getAssignedUsersForBooking({ search: userSearchQuery || undefined, limit: 50 });
+			getClientsForNav(
+				{ search: userSearchQuery || undefined, limit: 50 },
+				user.role,
+			);
 		}, 300);
 		return () => clearTimeout(t);
-	}, [createOpen, userSearchQuery, getAssignedUsersForBooking]);
+	}, [createOpen, userSearchQuery, getClientsForNav, user]);
 
 	// Only allow OTP request when user is on live chat and assigned to current PA
 	useEffect(() => {
@@ -140,8 +147,7 @@ export function ConciergeBookings() {
 			.get("/pa-otp/can-request", { params: { userId: selectedUserId } })
 			.then((res) => {
 				if (!cancelled) {
-					const allowed =
-						res.data?.data?.allowed ?? res.data?.allowed ?? false;
+					const allowed = res.data?.data?.allowed ?? res.data?.allowed ?? false;
 					setCanRequestOtp(Boolean(allowed));
 				}
 			})
@@ -186,7 +192,9 @@ export function ConciergeBookings() {
 			});
 			const expiresAt = res.data?.data?.expiresAt ?? res.data?.expiresAt;
 			setOtpExpiresAt(expiresAt ?? null);
-			customToast.success("OTP sent to client via WhatsApp. Ask them for the code.");
+			customToast.success(
+				"OTP sent to client via WhatsApp. Ask them for the code.",
+			);
 		} catch (err: unknown) {
 			const msg =
 				(err as { response?: { data?: { error?: { message?: string } } } })
@@ -203,7 +211,9 @@ export function ConciergeBookings() {
 			return;
 		}
 		if (!otpCode.trim()) {
-			customToast.error("Please request an OTP and enter the code from the client");
+			customToast.error(
+				"Please request an OTP and enter the code from the client",
+			);
 			return;
 		}
 
@@ -223,7 +233,9 @@ export function ConciergeBookings() {
 				const itemName = item ? item.name : newBookings[0].conciergeItemId;
 				const amount = item ? Number(item.price) || 0 : 0;
 				if (Number.isNaN(amount) || amount <= 0) {
-					customToast.error("Selected concierge item has no valid price. Please fix the item in Concierge list.");
+					customToast.error(
+						"Selected concierge item has no valid price. Please fix the item in Concierge list.",
+					);
 					return;
 				}
 
@@ -257,7 +269,9 @@ export function ConciergeBookings() {
 					(m) => Number.isNaN(Number(m.totalAmount)) || Number(m.totalAmount) <= 0,
 				);
 				if (hasInvalidAmount) {
-					customToast.error("One or more concierge items have no valid price. Please fix in Concierge list.");
+					customToast.error(
+						"One or more concierge items have no valid price. Please fix in Concierge list.",
+					);
 					return;
 				}
 
@@ -376,14 +390,16 @@ export function ConciergeBookings() {
 													role="combobox"
 													aria-expanded={userPopoverOpen}
 													className="w-full justify-between bg-zinc-50 dark:bg-zinc-950">
-													{selectedUserId
-														? users.find((u) => u.uniqueId === selectedUserId)?.name ||
-															selectedUserId
-														: "Search by Unique ID or name..."}
+													{selectedUserId ?
+														users.find((u) => u.uniqueId === selectedUserId)?.name ||
+														selectedUserId
+													:	"Search by Unique ID or name..."}
 													<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
 												</Button>
 											</PopoverTrigger>
-											<PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+											<PopoverContent
+												className="w-[var(--radix-popover-trigger-width)] p-0"
+												align="start">
 												<Command>
 													<CommandInput
 														placeholder="Search by Unique ID or name..."
@@ -420,12 +436,17 @@ export function ConciergeBookings() {
 												onClick={handleRequestOtp}
 												disabled={!selectedUserId || otpRequesting || !canRequestOtp}
 												className="shrink-0"
-												title={!canRequestOtp && selectedUserId ? "User must be on live chat and assigned to you" : undefined}>
+												title={
+													!canRequestOtp && selectedUserId ?
+														"User must be on live chat and assigned to you"
+													:	undefined
+												}>
 												{otpRequesting ? "Sending…" : "Send OTP to client"}
 											</Button>
 											{selectedUserId && !canRequestOtp && (
 												<span className="text-xs text-amber-600 dark:text-amber-400">
-													User must request live support first (on live chat, assigned to you).
+													User must request live support first (on live chat, assigned to
+													you).
 												</span>
 											)}
 											<Input
@@ -440,8 +461,7 @@ export function ConciergeBookings() {
 										</div>
 										{otpExpiresAt && (
 											<p className="text-xs text-zinc-500">
-												Code sent. Expires{" "}
-												{new Date(otpExpiresAt).toLocaleTimeString()}.
+												Code sent. Expires {new Date(otpExpiresAt).toLocaleTimeString()}.
 											</p>
 										)}
 									</div>
@@ -487,20 +507,22 @@ export function ConciergeBookings() {
 																variant="outline"
 																role="combobox"
 																className="w-full justify-between bg-zinc-50 dark:bg-zinc-900">
-																{booking.conciergeItemId
-																	? (() => {
-																			const item = conciergeItems.find(
-																				(i) => i.id === booking.conciergeItemId,
-																			);
-																			return item
-																				? `${item.name} — ${parseFloat(item.price).toLocaleString()} ${item.currency}`
-																				: booking.conciergeItemId;
-																		})()
-																	: "Search concierge type or item..."}
+																{booking.conciergeItemId ?
+																	(() => {
+																		const item = conciergeItems.find(
+																			(i) => i.id === booking.conciergeItemId,
+																		);
+																		return item ?
+																				`${item.name} — ${parseFloat(item.price).toLocaleString()} ${item.currency}`
+																			:	booking.conciergeItemId;
+																	})()
+																:	"Search concierge type or item..."}
 																<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
 															</Button>
 														</PopoverTrigger>
-														<PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+														<PopoverContent
+															className="w-[var(--radix-popover-trigger-width)] p-0"
+															align="start">
 															<Command>
 																<CommandInput placeholder="Search by name or price..." />
 																<CommandList>
@@ -595,7 +617,7 @@ export function ConciergeBookings() {
 					<div className="p-4">
 						{loading ?
 							<div className="flex justify-center p-8">Loading...</div>
-						:								<Table>
+						:	<Table>
 								<TableHeader>
 									<TableRow>
 										<TableHead>ID</TableHead>
@@ -617,17 +639,19 @@ export function ConciergeBookings() {
 												{booking.id.substring(0, 8)}...
 											</TableCell>
 											<TableCell className="text-sm">
-												{booking.user
-													? `${booking.user.name} (${booking.user.uniqueId})`
-													: booking.userId}
+												{booking.user ?
+													`${booking.user.name} (${booking.user.uniqueId})`
+												:	booking.userId}
 											</TableCell>
 											<TableCell>{booking.type}</TableCell>
 											<TableCell>
 												{booking.currency}{" "}
-												{Number(booking.totalAmount) != null &&
-												!Number.isNaN(Number(booking.totalAmount))
-													? Number(booking.totalAmount).toLocaleString()
-													: "—"}
+												{(
+													booking.totalAmount != null &&
+													!Number.isNaN(Number(booking.totalAmount))
+												) ?
+													Number(booking.totalAmount).toLocaleString()
+												:	"—"}
 											</TableCell>
 											<TableCell>{getStatusBadge(booking.status)}</TableCell>
 											<TableCell>
@@ -700,11 +724,13 @@ export function ConciergeBookings() {
 									<p className="font-mono text-sm">{selectedBooking.id}</p>
 								</div>
 								<div>
-									<h4 className="text-sm font-semibold text-zinc-500 mb-1">Assigned User</h4>
+									<h4 className="text-sm font-semibold text-zinc-500 mb-1">
+										Assigned User
+									</h4>
 									<p className="text-sm">
-										{selectedBooking.user
-											? `${selectedBooking.user.name} (${selectedBooking.user.uniqueId})`
-											: selectedBooking.userId}
+										{selectedBooking.user ?
+											`${selectedBooking.user.name} (${selectedBooking.user.uniqueId})`
+										:	selectedBooking.userId}
 									</p>
 								</div>
 								<div>
@@ -721,10 +747,12 @@ export function ConciergeBookings() {
 									</h4>
 									<p className="text-sm font-medium">
 										{selectedBooking.currency}{" "}
-										{Number(selectedBooking.totalAmount) != null &&
-										!Number.isNaN(Number(selectedBooking.totalAmount))
-											? Number(selectedBooking.totalAmount).toLocaleString()
-											: "—"}
+										{(
+											selectedBooking.totalAmount != null &&
+											!Number.isNaN(Number(selectedBooking.totalAmount))
+										) ?
+											Number(selectedBooking.totalAmount).toLocaleString()
+										:	"—"}
 									</p>
 								</div>
 								<div>
