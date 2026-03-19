@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
-import { useUsers, type User } from "../hooks/useUsers";
+import { useUsers } from "../hooks/useUsers";
 import { Card } from "../components/ui/card";
 import { Input } from "../components/ui/input";
 import { Badge } from "../components/ui/badge";
@@ -20,19 +20,11 @@ function getInitials(name: string) {
 export function Clients() {
 	const { user } = useAuth();
 	const navigate = useNavigate();
-	const { getClientsForNav } = useUsers();
-	const [clients, setClients] = useState<User[]>([]);
-	const [loading, setLoading] = useState(true);
+	const { getClientsForNav, users: clients, loading } = useUsers();
 	const [search, setSearch] = useState("");
 
 	useEffect(() => {
-		setLoading(true);
-		getClientsForNav({ limit: 100, search: search || undefined }, user?.role)
-			.then((res) => {
-				setClients(res?.data ?? []);
-			})
-			.catch(() => setClients([]))
-			.finally(() => setLoading(false));
+		getClientsForNav({ limit: 100, search: search || undefined }, user?.role);
 	}, [getClientsForNav, user?.role, search]);
 
 	return (

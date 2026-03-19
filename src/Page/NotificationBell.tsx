@@ -32,9 +32,48 @@ function playNotificationSound(): void {
 	try {
 		const audio = new Audio("/notification.mp3");
 		audio.volume = 0.5;
-		audio.play().catch(() => {});
+		audio.play().catch(() => {
+			// Fallback: short beep using Web Audio API (works without asset)
+			playBeepFallback();
+		});
 	} catch {
-		// no sound if file missing or autoplay blocked
+		playBeepFallback();
+	}
+}
+
+function playBeepFallback(): void {
+	try {
+		const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+		const osc = ctx.createOscillator();
+		const gain = ctx.createGain();
+		osc.connect(gain);
+		gain.connect(ctx.destination);
+		osc.frequency.value = 800;
+		osc.type = "sine";
+		gain.gain.setValueAtTime(0.2, ctx.currentTime);
+		gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+		osc.start(ctx.currentTime);
+		osc.stop(ctx.currentTime + 0.15);
+	} catch {
+		// ignore
+	}
+}
+
+function showBrowserNotification(title: string, body: string | null): void {
+	if (typeof window === "undefined" || !("Notification" in window)) return;
+	if (Notification.permission !== "granted") return;
+	try {
+		const n = new Notification(title, {
+			body: body ?? title,
+			icon: "/vite.svg",
+		});
+		n.onclick = () => {
+			window.focus();
+			n.close();
+		};
+		setTimeout(() => n.close(), 8000);
+	} catch {
+		// ignore
 	}
 }
 
@@ -49,7 +88,15 @@ export function NotificationBell() {
 	} = useNotifications();
 	const [isOpen, setIsOpen] = useState(false);
 	const prevUnreadRef = useRef(0);
+	const prevListRef = useRef<NotificationItem[]>([]);
 	const hasFetchedRef = useRef(false);
+
+	// Request browser notification permission when panel is opened
+	useEffect(() => {
+		if (isOpen && "Notification" in window && Notification.permission === "default") {
+			Notification.requestPermission().catch(() => {});
+		}
+	}, [isOpen]);
 
 	useEffect(() => {
 		fetchNotifications();
@@ -67,13 +114,25 @@ export function NotificationBell() {
 		return () => clearInterval(interval);
 	}, [fetchNotifications]);
 
-	// Play sound when unread count increases (e.g. new assignment)
+	// Play sound and show browser notification when new notifications arrive
 	useEffect(() => {
-		if (hasFetchedRef.current && unreadCount > prevUnreadRef.current) {
+		if (!hasFetchedRef.current) {
+			prevUnreadRef.current = unreadCount;
+			prevListRef.current = notifications;
+			return;
+		}
+		if (unreadCount > prevUnreadRef.current) {
 			playNotificationSound();
+			// Show browser push for the newest unread
+			const newUnread = notifications.filter((n) => !n.readAt);
+			const newest = newUnread[0];
+			if (newest) {
+				showBrowserNotification(newest.title, newest.body);
+			}
 		}
 		prevUnreadRef.current = unreadCount;
-	}, [unreadCount]);
+		prevListRef.current = notifications;
+	}, [unreadCount, notifications]);
 
 	const handleMarkAsRead = (id: string) => {
 		markAsRead(id);

@@ -12,7 +12,7 @@ import {
 	Search,
 	Lock,
 	Globe,
-	ExternalLink,
+	Copy,
 } from "lucide-react";
 
 interface InAppBrowserProps {
@@ -28,20 +28,9 @@ const quickLinks = [
 	{ name: "LinkedIn", url: "https://www.linkedin.com" },
 ];
 
-/** Hosts that allow embedding (same-origin or explicit allowlist). If not in this set, we open in new tab to avoid X-Frame-Options errors. */
-function isEmbeddableUrl(fullUrl: string): boolean {
-	try {
-		const origin = new URL(fullUrl).origin;
-		return origin === window.location.origin;
-	} catch {
-		return false;
-	}
-}
-
 export function InAppBrowser({ onClose }: InAppBrowserProps) {
 	const [url, setUrl] = useState("");
 	const [currentUrl, setCurrentUrl] = useState("");
-	const [openedInNewTab, setOpenedInNewTab] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
 	const [history, setHistory] = useState<string[]>([]);
 	const [historyIndex, setHistoryIndex] = useState(-1);
@@ -49,27 +38,15 @@ export function InAppBrowser({ onClose }: InAppBrowserProps) {
 	const handleNavigate = (targetUrl: string) => {
 		if (!targetUrl) return;
 
-		// Add https:// if not present
 		let fullUrl = targetUrl;
 		if (!fullUrl.startsWith("http://") && !fullUrl.startsWith("https://")) {
 			fullUrl = "https://" + fullUrl;
-		}
-
-		setOpenedInNewTab(null);
-
-		if (!isEmbeddableUrl(fullUrl)) {
-			window.open(fullUrl, "_blank", "noopener,noreferrer");
-			setOpenedInNewTab(fullUrl);
-			setUrl(fullUrl);
-			setCurrentUrl("");
-			return;
 		}
 
 		setLoading(true);
 		setCurrentUrl(fullUrl);
 		setUrl(fullUrl);
 
-		// Update history
 		const newHistory = history.slice(0, historyIndex + 1);
 		newHistory.push(fullUrl);
 		setHistory(newHistory);
@@ -78,9 +55,9 @@ export function InAppBrowser({ onClose }: InAppBrowserProps) {
 		setTimeout(() => setLoading(false), 500);
 	};
 
-	const handleOpenInNewTab = () => {
+	const handleCopyLink = () => {
 		if (currentUrl) {
-			window.open(currentUrl, "_blank", "noopener,noreferrer");
+			navigator.clipboard.writeText(currentUrl).catch(() => {});
 		}
 	};
 
@@ -117,7 +94,6 @@ export function InAppBrowser({ onClose }: InAppBrowserProps) {
 	const handleHome = () => {
 		setCurrentUrl("");
 		setUrl("");
-		setOpenedInNewTab(null);
 	};
 
 	return (
@@ -198,10 +174,10 @@ export function InAppBrowser({ onClose }: InAppBrowserProps) {
 							type="button"
 							variant="outline"
 							size="sm"
-							onClick={handleOpenInNewTab}
+							onClick={handleCopyLink}
 							className="shrink-0">
-							<ExternalLink className="size-4 mr-1" />
-							Open in new tab
+							<Copy className="size-4 mr-1" />
+							Copy link
 						</Button>
 					)}
 				</div>
@@ -209,28 +185,7 @@ export function InAppBrowser({ onClose }: InAppBrowserProps) {
 
 			{/* Browser Content */}
 			<div className="flex-1 overflow-hidden">
-				{openedInNewTab ? (
-					<ScrollArea className="h-full">
-						<div className="p-6 max-w-xl mx-auto text-center">
-							<div className="inline-flex items-center justify-center size-16 rounded-full bg-violet-100 dark:bg-violet-950/50 mb-4">
-								<ExternalLink className="size-8 text-violet-600 dark:text-violet-400" />
-							</div>
-							<h3 className="text-lg font-medium mb-2">Opened in new tab</h3>
-							<p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
-								This site can&apos;t be embedded in the app. It was opened in a new browser tab so you can use it without leaving the dashboard.
-							</p>
-							<p className="text-xs font-mono text-zinc-500 dark:text-zinc-400 break-all">
-								{openedInNewTab}
-							</p>
-							<Button
-								variant="outline"
-								className="mt-4"
-								onClick={() => window.open(openedInNewTab, "_blank", "noopener,noreferrer")}>
-								Open again
-							</Button>
-						</div>
-					</ScrollArea>
-				) : currentUrl ? (
+				{currentUrl ? (
 					<iframe
 						src={currentUrl}
 						className="w-full h-full border-0"
@@ -264,7 +219,6 @@ export function InAppBrowser({ onClose }: InAppBrowserProps) {
 												<Globe className="size-5 text-zinc-600 dark:text-zinc-400" />
 											</div>
 											<p className="text-sm">{link.name}</p>
-											<p className="text-[10px] text-zinc-400 mt-0.5">Opens in new tab</p>
 										</Card>
 									))}
 								</div>
