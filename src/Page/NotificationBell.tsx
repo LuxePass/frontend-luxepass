@@ -12,7 +12,7 @@ import { Badge } from "../components/ui/badge";
 import { Separator } from "../components/ui/separator";
 import { Bell, CheckCircle2, AlertCircle, Info, UserPlus } from "lucide-react";
 import { cn } from "../utils";
-import { useNotifications, NOTIFICATION_POLL_INTERVAL_MS } from "../hooks/useNotifications";
+import { useNotifications, type NotificationItem, NOTIFICATION_POLL_INTERVAL_MS } from "../hooks/useNotifications";
 
 function formatTimeAgo(createdAt: string): string {
 	const d = new Date(createdAt);

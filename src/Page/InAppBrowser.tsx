@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -14,6 +14,7 @@ import {
 	Globe,
 	Copy,
 } from "lucide-react";
+import { API_BASE_URL } from "../services/api";
 
 interface InAppBrowserProps {
 	onClose: () => void;
@@ -95,6 +96,15 @@ export function InAppBrowser({ onClose }: InAppBrowserProps) {
 		setCurrentUrl("");
 		setUrl("");
 	};
+
+	// Proxy URL so the page loads inside the app (backend fetches and rewrites links)
+	const proxyFrameSrc = useMemo(() => {
+		if (!currentUrl) return null;
+		const token = localStorage.getItem("accessToken");
+		const params = new URLSearchParams({ url: currentUrl });
+		if (token) params.set("accessToken", token);
+		return `${API_BASE_URL}/browser-proxy?${params.toString()}`;
+	}, [currentUrl]);
 
 	return (
 		<div className="fixed inset-0 z-50 bg-white dark:bg-zinc-950 flex flex-col">
@@ -183,11 +193,11 @@ export function InAppBrowser({ onClose }: InAppBrowserProps) {
 				</div>
 			</div>
 
-			{/* Browser Content */}
+			{/* Browser Content: load via backend proxy so links stay in-app */}
 			<div className="flex-1 overflow-hidden">
-				{currentUrl ? (
+				{proxyFrameSrc ? (
 					<iframe
-						src={currentUrl}
+						src={proxyFrameSrc}
 						className="w-full h-full border-0"
 						title="In-App Browser"
 						sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
