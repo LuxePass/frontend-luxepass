@@ -141,7 +141,7 @@ export function TransferOverrideForm() {
 								</p>
 							) : (
 								<div className="space-y-3">
-									{pendingTransfers.map((t) => (
+									{pendingTransfers.map((t: any) => (
 										<div
 											key={t.id}
 											className="p-4 rounded-xl border border-orange-200 dark:border-orange-900 bg-orange-50/50 dark:bg-orange-950/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">

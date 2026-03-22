@@ -28,6 +28,7 @@ export interface PendingTransfer {
 	narration?: string;
 	createdAt: string;
 	expiresAt: string;
+	status?: string;
 }
 
 /** Full transfer detail (e.g. from GET /transfers/detail/:id) */
@@ -89,6 +90,20 @@ export function useTransfers() {
 		}
 	}, [requestPending]);
 
+	const getPaTransfers = useCallback(
+		async (params?: { status?: string; limit?: number; offset?: number }) => {
+			try {
+				const res = await requestPending(api.get("/transfers/pa/list", { params }));
+				return res;
+			} catch (_err: unknown) {
+				const err = _err as { response?: { status?: number } };
+				if (err?.response?.status === 403) return { data: [], total: 0 };
+				throw _err;
+			}
+		},
+		[requestPending],
+	);
+
 	const executeEmergencyTransfer = useCallback(async (id: string) => {
 		const response = await api.post(`/transfers/${id}/execute`);
 		return response.data?.data ?? response.data;
@@ -111,9 +126,11 @@ export function useTransfers() {
 		error,
 		getTransfers,
 		rejectTransfer,
-		pendingTransfers: pendingData ?? [],
+		pendingTransfers: (pendingData as any)?.data || (Array.isArray(pendingData) ? pendingData : []),
 		pendingLoading,
+		pendingTotal: (pendingData as any)?.total || (Array.isArray(pendingData) ? pendingData.length : 0),
 		getPendingTransfers,
+		getPaTransfers,
 		executeEmergencyTransfer,
 		getTransferById,
 		transferDetail: detailData ?? null,

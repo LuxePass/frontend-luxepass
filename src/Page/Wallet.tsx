@@ -44,7 +44,7 @@ import { customToast } from "./CustomToast";
 // Interface for props if needed
 
 import { useParams } from "react-router-dom";
-import { useTransfers } from "../hooks/useTransfers";
+import { useTransfers, type PendingTransfer } from "../hooks/useTransfers";
 import { ArrowRightLeft, Loader2 } from "lucide-react";
 
 export function Wallet() {
@@ -436,7 +436,7 @@ export function Wallet() {
 												</tr>
 											</thead>
 											<tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
-												{pendingTransfers.map((t) => (
+												{pendingTransfers.map((t: PendingTransfer) => (
 													<tr key={t.id} className="bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
 														<td className="px-4 py-3 font-medium">
 															{formatCurrency(t.amount)} {t.currency}
