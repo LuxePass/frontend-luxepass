@@ -174,7 +174,7 @@ export function TransferOverrideForm() {
 												size="sm"
 												onClick={() => handleExecute(t.id)}
 												disabled={executingId === t.id}
-												className="shrink-0 bg-green-600 hover:bg-green-700 text-white">
+												className="shrink-0 bg-green-700 hover:bg-green-800 text-white">
 												{executingId === t.id ? (
 													<Loader2 className="size-4 mr-1.5 animate-spin" />
 												) : (
@@ -305,7 +305,7 @@ export function TransferOverrideForm() {
 								</Button>
 								<Button
 									type="submit"
-									className="flex-1 bg-orange-600 hover:bg-orange-700">
+									className="flex-1 bg-orange-700 hover:bg-orange-800 text-white">
 									<Send className="size-4 mr-2" />
 									Submit Override Request
 								</Button>
@@ -350,7 +350,7 @@ export function TransferOverrideForm() {
 						</AlertDialogCancel>
 						<AlertDialogAction
 							onClick={handleConfirm}
-							className="bg-orange-600 hover:bg-orange-700">
+							className="bg-orange-700 hover:bg-orange-800 text-white">
 							Confirm & Submit
 						</AlertDialogAction>
 					</AlertDialogFooter>

@@ -451,7 +451,7 @@ export function Wallet() {
 														<td className="px-4 py-3">
 															<Button
 																size="sm"
-																className="bg-violet-600 hover:bg-violet-700 text-white"
+																className="bg-violet-700 hover:bg-violet-800 text-white"
 																onClick={() => handleExecuteTransfer(t.id)}
 																disabled={executingId === t.id}>
 																{executingId === t.id ? (

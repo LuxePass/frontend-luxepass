@@ -85,7 +85,7 @@ function TransferRow({
 						<>
 							<Button
 								size="sm"
-								className="bg-green-600 hover:bg-green-700"
+								className="bg-green-700 hover:bg-green-800 text-white"
 								onClick={onExecute}
 								disabled={actionLoading}>
 								{actionLoading ? (
@@ -209,7 +209,7 @@ export function TransferRequests() {
 						{isSuperAdmin && (
 							<Button
 								size="sm"
-								className="bg-orange-600 hover:bg-orange-700"
+								className="bg-orange-700 hover:bg-orange-800 text-white"
 								onClick={() => navigate("/transfer")}>
 								Transfer override
 							</Button>
@@ -222,10 +222,10 @@ export function TransferRequests() {
 						<button
 							key={s.id}
 							onClick={() => setStatus(s.id)}
-							className={`px-4 py-1.5 text-sm font-medium rounded-full whitespace-nowrap transition-colors ${
+							className={`px-4 py-1.5 text-sm font-semibold rounded-full whitespace-nowrap transition-colors ${
 								status === s.id
-									? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
-									: "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
+									? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 shadow-sm"
+									: "bg-zinc-200 text-zinc-700 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
 							}`}>
 							{s.label}
 						</button>
@@ -409,7 +409,7 @@ function TransferDetailModal({
 									{onExecute && (
 										<Button
 											size="sm"
-											className="bg-green-600 hover:bg-green-700"
+											className="bg-green-700 hover:bg-green-800 text-white"
 											onClick={onExecute}
 											disabled={actionLoading}>
 											{actionLoading ? (
