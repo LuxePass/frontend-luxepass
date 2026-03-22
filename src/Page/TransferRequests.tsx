@@ -224,7 +224,7 @@ export function TransferRequests() {
 							onClick={() => setStatus(s.id)}
 							className={`px-4 py-1.5 text-sm font-semibold rounded-full whitespace-nowrap transition-colors ${
 								status === s.id
-									? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 shadow-sm"
+									? "bg-orange-600 text-white shadow-md"
 									: "bg-zinc-200 text-zinc-700 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
 							}`}>
 							{s.label}
