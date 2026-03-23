@@ -16,6 +16,7 @@ import { Separator } from "../components/ui/separator";
 import { Sparkles, Send } from "lucide-react";
 import { cn } from "../utils";
 import { useAIContext } from "../context/AIContext";
+import { useAuth } from "../hooks/useAuth";
 
 interface Message {
 	id: string;
@@ -41,6 +42,7 @@ export function AIAssistantModal({
 	onOpenChange,
 }: AIAssistantModalProps) {
 	const aiContext = useAIContext();
+	const { user } = useAuth();
 	const [messages, setMessages] = useState<Message[]>([
 		{
 			id: "1",
@@ -79,6 +81,7 @@ export function AIAssistantModal({
 			if (aiContext?.conversationId) body.conversationId = aiContext.conversationId;
 			if (aiContext?.userIdentifier) body.userIdentifier = aiContext.userIdentifier;
 			if (aiContext?.includeCatalog) body.includeCatalog = true;
+			if (user?.id) body.paId = user.id;
 			const { data } = await api.post("/ai/chat", body);
 
 			if (data.success && data.data && data.data.reply) {
