@@ -16,7 +16,14 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "../components/ui/dialog";
-import { ShieldAlert, Loader2, RefreshCw, CheckCircle2, XCircle, Info } from "lucide-react";
+import {
+	ShieldAlert,
+	Loader2,
+	RefreshCw,
+	CheckCircle2,
+	XCircle,
+	Info,
+} from "lucide-react";
 
 function TransferRow({
 	transfer,
@@ -38,19 +45,29 @@ function TransferRow({
 	const getStatusBadge = () => {
 		switch (transfer.status) {
 			case "SUCCESS":
-				return <Badge className="bg-green-100 text-green-800 border-green-200">Successful</Badge>;
-			case "REJECTED":
-				return <Badge className="bg-red-100 text-red-800 border-red-200">Rejected</Badge>;
-			case "FAILED":
-				return <Badge className="bg-zinc-100 text-zinc-800 border-zinc-200">Failed</Badge>;
-			default:
-				return expired ? (
-					<Badge variant="outline" className="bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300 border-red-300">
-						Expired
+				return (
+					<Badge className="bg-green-100 text-green-800 border-green-200">
+						Successful
 					</Badge>
-				) : (
-					<Badge className="bg-amber-100 text-amber-800 border-amber-200">Pending</Badge>
 				);
+			case "REJECTED":
+				return (
+					<Badge className="bg-red-100 text-red-800 border-red-200">Rejected</Badge>
+				);
+			case "FAILED":
+				return (
+					<Badge className="bg-zinc-100 text-zinc-800 border-zinc-200">Failed</Badge>
+				);
+			default:
+				return expired ?
+						<Badge
+							variant="outline"
+							className="bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300 border-red-300">
+							Expired
+						</Badge>
+					:	<Badge className="bg-amber-100 text-amber-800 border-amber-200">
+							Pending
+						</Badge>;
 		}
 	};
 
@@ -59,14 +76,17 @@ function TransferRow({
 			<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
 				<div className="min-w-0 flex-1">
 					<div className="flex flex-wrap items-center gap-2 mb-1">
-						<span className="font-mono text-sm font-medium">{transfer.reference}</span>
+						<span className="font-mono text-sm font-medium">
+							{transfer.reference}
+						</span>
 						{getStatusBadge()}
 					</div>
 					<p className="text-sm text-zinc-600 dark:text-zinc-400">
 						{transfer.userName ?? transfer.userUniqueId ?? transfer.userId ?? "—"}
 					</p>
 					<p className="text-sm text-zinc-500 mt-0.5">
-						{transfer.recipientBankName} · {transfer.recipientAccountNumber} · {transfer.recipientName}
+						{transfer.recipientBankName} · {transfer.recipientAccountNumber} ·{" "}
+						{transfer.recipientName}
 					</p>
 					<p className="text-xs text-zinc-500 mt-1">
 						{transfer.narration || "—"} · Initiated{" "}
@@ -77,7 +97,10 @@ function TransferRow({
 					{transfer.currency} {parseFloat(transfer.amount).toLocaleString()}
 				</div>
 				<div className="shrink-0 flex items-center gap-2">
-					<Button variant="outline" size="sm" onClick={onDetails}>
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={onDetails}>
 						<Info className="size-4 mr-1" />
 						Details
 					</Button>
@@ -88,11 +111,9 @@ function TransferRow({
 								className="bg-green-700 hover:bg-green-800 text-white"
 								onClick={onExecute}
 								disabled={actionLoading}>
-								{actionLoading ? (
+								{actionLoading ?
 									<Loader2 className="size-4 animate-spin" />
-								) : (
-									<CheckCircle2 className="size-4 mr-1" />
-								)}
+								:	<CheckCircle2 className="size-4 mr-1" />}
 								Execute
 							</Button>
 							<Button
@@ -188,7 +209,9 @@ export function TransferRequests() {
 						<div>
 							<h1 className="text-lg font-semibold">Transfer Requests</h1>
 							<p className="text-sm text-zinc-500 dark:text-zinc-400">
-								{status === "PENDING" ? "Pending emergency transfers" : `${status.toLowerCase()} transfers`}
+								{status === "PENDING" ?
+									"Pending emergency transfers"
+								:	`${status.toLowerCase()} transfers`}
 								{isSuperAdmin ? " (all)" : " assigned to you"}
 							</p>
 						</div>
@@ -197,13 +220,15 @@ export function TransferRequests() {
 						<Button
 							variant="outline"
 							size="sm"
-							onClick={() => status === "PENDING" ? getPendingTransfers() : getPaTransfers({ status })}
+							onClick={() =>
+								status === "PENDING" ?
+									getPendingTransfers()
+								:	getPaTransfers({ status })
+							}
 							disabled={pendingLoading}>
-							{pendingLoading ? (
+							{pendingLoading ?
 								<Loader2 className="size-4 animate-spin" />
-							) : (
-								<RefreshCw className="size-4" />
-							)}
+							:	<RefreshCw className="size-4" />}
 							<span className="ml-2">Refresh</span>
 						</Button>
 						{isSuperAdmin && (
@@ -223,9 +248,9 @@ export function TransferRequests() {
 							key={s.id}
 							onClick={() => setStatus(s.id)}
 							className={`px-4 py-1.5 text-sm font-semibold rounded-full whitespace-nowrap transition-colors ${
-								status === s.id
-									? "bg-orange-600 text-white shadow-md"
-									: "bg-zinc-200 text-zinc-700 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+								status === s.id ?
+									"bg-orange-600 text-white shadow-md"
+								:	"bg-zinc-200 text-zinc-700 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
 							}`}>
 							{s.label}
 						</button>
@@ -235,21 +260,21 @@ export function TransferRequests() {
 
 			<ScrollArea className="flex-1">
 				<div className="p-3 lg:p-6">
-					{pendingLoading && pendingTransfers.length === 0 ? (
+					{pendingLoading && pendingTransfers.length === 0 ?
 						<div className="flex items-center justify-center py-12 gap-2 text-zinc-500">
 							<Loader2 className="size-5 animate-spin" />
 							<span>Loading transfers…</span>
 						</div>
-					) : pendingTransfers.length === 0 ? (
+					: pendingTransfers.length === 0 ?
 						<Card className="p-8 text-center text-zinc-500 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800">
 							<ShieldAlert className="size-10 mx-auto mb-3 opacity-50" />
 							<p className="font-medium">No {status.toLowerCase()} transfers found</p>
 							<p className="text-sm mt-1">
-								Transfers matching this status {isSuperAdmin ? "" : "assigned to you"} will appear here.
+								Transfers matching this status {isSuperAdmin ? "" : "assigned to you"}{" "}
+								will appear here.
 							</p>
 						</Card>
-					) : (
-						<div className="space-y-3">
+					:	<div className="space-y-3">
 							{pendingTransfers.map((t: PendingTransfer) => (
 								<TransferRow
 									key={t.id}
@@ -261,7 +286,7 @@ export function TransferRequests() {
 								/>
 							))}
 						</div>
-					)}
+					}
 				</div>
 			</ScrollArea>
 
@@ -279,7 +304,6 @@ export function TransferRequests() {
 		</div>
 	);
 }
-
 
 function TransferDetailModal({
 	open,
@@ -304,17 +328,19 @@ function TransferDetailModal({
 	const isPending = transfer?.status === "PENDING";
 
 	return (
-		<Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+		<Dialog
+			open={open}
+			onOpenChange={(v) => !v && onClose()}>
 			<DialogContent className="max-w-md">
 				<DialogHeader>
 					<DialogTitle>Transfer details</DialogTitle>
 				</DialogHeader>
-				{loading ? (
+				{loading ?
 					<div className="flex items-center justify-center py-8 gap-2 text-zinc-500">
 						<Loader2 className="size-5 animate-spin" />
 						<span>Loading…</span>
 					</div>
-				) : transfer ? (
+				: transfer ?
 					<div className="space-y-3 text-sm">
 						<div className="flex justify-between">
 							<span className="text-zinc-500">Reference</span>
@@ -323,7 +349,10 @@ function TransferDetailModal({
 						<div className="flex justify-between">
 							<span className="text-zinc-500">User</span>
 							<span>
-								{transfer.user?.name ?? transfer.user?.uniqueId ?? transfer.userId ?? "—"}
+								{transfer.user?.name ??
+									transfer.user?.uniqueId ??
+									transfer.userId ??
+									"—"}
 							</span>
 						</div>
 						<div className="flex justify-between">
@@ -359,11 +388,11 @@ function TransferDetailModal({
 							<Badge
 								variant="outline"
 								className={
-									transfer.status === "SUCCESS"
-										? "bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300"
-										: transfer.status === "FAILED" || transfer.rejectedAt
-										? "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300"
-										: "bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300"
+									transfer.status === "SUCCESS" ?
+										"bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300"
+									: transfer.status === "FAILED" || transfer.rejectedAt ?
+										"bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300"
+									:	"bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300"
 								}>
 								{transfer.status}
 								{transfer.rejectedAt ? " (Rejected)" : ""}
@@ -395,7 +424,9 @@ function TransferDetailModal({
 							<div className="pt-4 flex flex-col gap-2 border-t border-zinc-200 dark:border-zinc-700">
 								{onReject && (
 									<div>
-										<label className="text-xs text-zinc-500">Rejection reason (optional)</label>
+										<label className="text-xs text-zinc-500">
+											Rejection reason (optional)
+										</label>
 										<input
 											type="text"
 											value={rejectReason}
@@ -412,11 +443,9 @@ function TransferDetailModal({
 											className="bg-green-700 hover:bg-green-800 text-white"
 											onClick={onExecute}
 											disabled={actionLoading}>
-											{actionLoading ? (
+											{actionLoading ?
 												<Loader2 className="size-4 animate-spin" />
-											) : (
-												<CheckCircle2 className="size-4 mr-1" />
-											)}
+											:	<CheckCircle2 className="size-4 mr-1" />}
 											Execute
 										</Button>
 									)}
@@ -434,9 +463,7 @@ function TransferDetailModal({
 							</div>
 						)}
 					</div>
-				) : (
-					<p className="text-sm text-zinc-500">Transfer not found.</p>
-				)}
+				:	<p className="text-sm text-zinc-500">Transfer not found.</p>}
 			</DialogContent>
 		</Dialog>
 	);
