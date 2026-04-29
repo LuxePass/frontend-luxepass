@@ -26,9 +26,9 @@ export interface DashboardStats {
 
 export function useUsers() {
 	const {
-		data: usersData, // Renamed to avoid conflict with new `userStats`
-		loading: usersLoading, // Renamed to avoid conflict with new `loading`
-		error: usersError, // Renamed to avoid conflict with new `error`
+		data: usersData,
+		loading: usersLoading,
+		error: usersError,
 		request,
 	} = useApi<{
 		data: User[];
@@ -56,10 +56,9 @@ export function useUsers() {
 				return await request(
 					api.get("/users", {
 						params: { ...params, limit: params?.limit ?? 100 },
-					})
+					}),
 				);
 			} catch (error: unknown) {
-				// Handle 403 permission errors gracefully
 				const err = error as {
 					response?: {
 						status?: number;
@@ -86,7 +85,7 @@ export function useUsers() {
 				return await request(
 					api.get("/users/assigned", {
 						params: { ...params, limit: params?.limit ?? 100 },
-					})
+					}),
 				);
 			} catch (error: unknown) {
 				const err = error as {
@@ -118,7 +117,7 @@ export function useUsers() {
 				return await request(
 					api.get(isAdmin ? "/users" : "/users/assigned", {
 						params: { ...params, limit: params?.limit ?? 100 },
-					})
+					}),
 				);
 			} catch (error: unknown) {
 				const err = error as {
