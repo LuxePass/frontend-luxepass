@@ -43,10 +43,20 @@ export function TransferOverrideForm() {
 		getPendingTransfers();
 	}, [getPendingTransfers]);
 
-	const handleExecute = async (id: string) => {
-		setExecutingId(id);
+	const handleExecute = async (transfer: { id: string; assignedPaId?: string }) => {
+		setExecutingId(transfer.id);
 		try {
-			await executeEmergencyTransfer(id);
+			const permissionToken =
+				transfer.assignedPaId ?
+					window.prompt("Enter transfer permission token")?.trim()
+				: undefined;
+
+			if (transfer.assignedPaId && !permissionToken) {
+				customToast.error("Permission token is required for assigned transfer");
+				return;
+			}
+
+			await executeEmergencyTransfer(transfer.id, permissionToken);
 			customToast.success("Transfer executed successfully");
 			getPendingTransfers();
 		} catch (error: any) {
@@ -172,7 +182,7 @@ export function TransferOverrideForm() {
 											</div>
 											<Button
 												size="sm"
-												onClick={() => handleExecute(t.id)}
+												onClick={() => handleExecute(t)}
 												disabled={executingId === t.id}
 												className="shrink-0 bg-green-700 hover:bg-green-800 text-white">
 												{executingId === t.id ? (

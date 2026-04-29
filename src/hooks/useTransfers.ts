@@ -104,10 +104,18 @@ export function useTransfers() {
 		[requestPending],
 	);
 
-	const executeEmergencyTransfer = useCallback(async (id: string) => {
-		const response = await api.post(`/transfers/${id}/execute`);
-		return response.data?.data ?? response.data;
-	}, []);
+	const executeEmergencyTransfer = useCallback(
+			async (id: string, permissionToken?: string) => {
+				const response =
+					permissionToken ?
+						await api.post(`/transfers/${id}/execute-with-token`, {
+							permissionToken,
+						})
+					: await api.post(`/transfers/${id}/execute`);
+				return response.data?.data ?? response.data;
+			},
+			[],
+		);
 
 	const { data: detailData, loading: detailLoading, request: requestDetail } = useApi<TransferDetail>();
 

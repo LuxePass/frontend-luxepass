@@ -167,10 +167,19 @@ export function TransferRequests() {
 	const openDetail = (id: string) => setDetailId(id);
 	const closeDetail = () => setDetailId(null);
 
-	const handleExecute = async (id: string) => {
-		setActionLoading(id);
+	const handleExecute = async (transfer: PendingTransfer) => {
+		setActionLoading(transfer.id);
 		try {
-			await executeEmergencyTransfer(id);
+			const permissionToken =
+				transfer.assignedPaId ?
+					window.prompt("Enter transfer permission token")?.trim()
+				: undefined;
+
+			if (transfer.assignedPaId && !permissionToken) {
+				return;
+			}
+
+			await executeEmergencyTransfer(transfer.id, permissionToken);
 			closeDetail();
 			if (status === "PENDING") getPendingTransfers();
 			else getPaTransfers({ status });
@@ -280,7 +289,7 @@ export function TransferRequests() {
 									key={t.id}
 									transfer={t}
 									onDetails={() => openDetail(t.id)}
-									onExecute={() => handleExecute(t.id)}
+									onExecute={() => handleExecute(t)}
 									onReject={() => handleReject(t.id)}
 									actionLoading={actionLoading === t.id}
 								/>
@@ -295,7 +304,16 @@ export function TransferRequests() {
 				onClose={closeDetail}
 				transfer={transferDetail}
 				loading={transferDetailLoading}
-				onExecute={detailId ? () => handleExecute(detailId) : undefined}
+				onExecute={
+					detailId ?
+						() => {
+							const selected = pendingTransfers.find((t) => t.id === detailId);
+							if (selected) {
+								handleExecute(selected);
+							}
+						}
+					: undefined
+				}
 				onReject={
 					detailId ? (reason?: string) => handleReject(detailId, reason) : undefined
 				}

@@ -119,10 +119,20 @@ export function Wallet() {
 		}
 	};
 
-	const handleExecuteTransfer = async (id: string) => {
-		setExecutingId(id);
+	const handleExecuteTransfer = async (transfer: PendingTransfer) => {
+		setExecutingId(transfer.id);
 		try {
-			await executeEmergencyTransfer(id);
+			const permissionToken =
+				transfer.assignedPaId ?
+					window.prompt("Enter transfer permission token")?.trim()
+				: undefined;
+
+			if (transfer.assignedPaId && !permissionToken) {
+				customToast.error("Permission token is required for assigned transfer");
+				return;
+			}
+
+			await executeEmergencyTransfer(transfer.id, permissionToken);
 			customToast.success({
 				title: "Transfer executed",
 				description: "Emergency transfer was processed successfully",
@@ -452,7 +462,7 @@ export function Wallet() {
 															<Button
 																size="sm"
 																className="bg-violet-700 hover:bg-violet-800 text-white"
-																onClick={() => handleExecuteTransfer(t.id)}
+																onClick={() => handleExecuteTransfer(t)}
 																disabled={executingId === t.id}>
 																{executingId === t.id ? (
 																	<Loader2 className="size-4 animate-spin" />
