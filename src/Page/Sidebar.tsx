@@ -114,7 +114,7 @@ export function Sidebar({
 					<div className="flex items-center gap-2">
 						<div className="p-2 rounded-lg">
 							<img
-								src="/vite.svg"
+								src="/logo.svg"
 								alt="Luxepass Logo"
 								className="w-6 h-6 object-contain"
 							/>

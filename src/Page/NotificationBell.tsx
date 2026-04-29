@@ -65,7 +65,7 @@ function showBrowserNotification(title: string, body: string | null): void {
 	try {
 		const n = new Notification(title, {
 			body: body ?? title,
-			icon: "/vite.svg",
+			icon: "/logo.svg",
 		});
 		n.onclick = () => {
 			window.focus();
