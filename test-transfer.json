@@ -1,0 +1,7 @@
+{
+    "amount":  5000,
+    "immediate":  false,
+    "userId":  "test-user-1",
+    "assignedPaId":  "pa-1",
+    "expiryMinutes":  30
+}

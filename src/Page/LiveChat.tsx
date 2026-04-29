@@ -291,7 +291,7 @@ export function LiveChat() {
 	);
 
 	const whatsappBackendBaseUrl =
-		import.meta.env.VITE_WHATSAPP_BACKEND_URL ??
+		process.env.NEXT_PUBLIC_WHATSAPP_BACKEND_URL ??
 		"https://whatsapp-backend-ix4v.onrender.com/api";
 
 	const backendHeaders = useMemo(

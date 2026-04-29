@@ -43,7 +43,7 @@ export function useReferrals() {
 		setLoading(true);
 		try {
 			const backendUrl =
-				import.meta.env.VITE_WHATSAPP_BACKEND_URL ||
+				process.env.NEXT_PUBLIC_WHATSAPP_BACKEND_URL ||
 				"https://mysound-whatsapp-backend.onrender.com/api";
 			const response = await fetch(`${backendUrl}/referrals/stats`);
 			const data = await response.json();

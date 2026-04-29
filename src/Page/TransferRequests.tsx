@@ -148,7 +148,7 @@ export function TransferRequests() {
 	} = useTransfers();
 	const [detailId, setDetailId] = useState<string | null>(null);
 	const [actionLoading, setActionLoading] = useState<string | null>(null);
-	const [status, setStatus] = useState<string>("PENDING");
+	const [status, setStatus] = useState<string>("ALL");
 
 	const isSuperAdmin = user?.role === "SUPER_ADMIN";
 
@@ -156,7 +156,7 @@ export function TransferRequests() {
 		if (status === "PENDING") {
 			getPendingTransfers();
 		} else {
-			getPaTransfers({ status });
+			getPaTransfers(status === "ALL" ? undefined : { status });
 		}
 	}, [status, getPendingTransfers, getPaTransfers]);
 
@@ -182,7 +182,7 @@ export function TransferRequests() {
 			await executeEmergencyTransfer(transfer.id, permissionToken);
 			closeDetail();
 			if (status === "PENDING") getPendingTransfers();
-			else getPaTransfers({ status });
+			else getPaTransfers(status === "ALL" ? undefined : { status });
 		} finally {
 			setActionLoading(null);
 		}
@@ -194,13 +194,14 @@ export function TransferRequests() {
 			await rejectTransfer(id, reason);
 			closeDetail();
 			if (status === "PENDING") getPendingTransfers();
-			else getPaTransfers({ status });
+			else getPaTransfers(status === "ALL" ? undefined : { status });
 		} finally {
 			setActionLoading(null);
 		}
 	};
 
 	const statuses = [
+		{ id: "ALL", label: "All" },
 		{ id: "PENDING", label: "Pending" },
 		{ id: "SUCCESS", label: "Successful" },
 		{ id: "REJECTED", label: "Rejected" },
@@ -218,9 +219,11 @@ export function TransferRequests() {
 						<div>
 							<h1 className="text-lg font-semibold">Transfer Requests</h1>
 							<p className="text-sm text-zinc-500 dark:text-zinc-400">
-								{status === "PENDING" ?
+								{status === "ALL" ?
+									"All emergency transfers"
+								: status === "PENDING" ?
 									"Pending emergency transfers"
-								:	`${status.toLowerCase()} transfers`}
+								: 	`${status.toLowerCase()} transfers`}
 								{isSuperAdmin ? " (all)" : " assigned to you"}
 							</p>
 						</div>
@@ -232,7 +235,7 @@ export function TransferRequests() {
 							onClick={() =>
 								status === "PENDING" ?
 									getPendingTransfers()
-								:	getPaTransfers({ status })
+								: 	getPaTransfers(status === "ALL" ? undefined : { status })
 							}
 							disabled={pendingLoading}>
 							{pendingLoading ?
@@ -277,9 +280,12 @@ export function TransferRequests() {
 					: pendingTransfers.length === 0 ?
 						<Card className="p-8 text-center text-zinc-500 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800">
 							<ShieldAlert className="size-10 mx-auto mb-3 opacity-50" />
-							<p className="font-medium">No {status.toLowerCase()} transfers found</p>
+							<p className="font-medium">
+								No {status === "ALL" ? "" : `${status.toLowerCase()} `}transfers found
+							</p>
 							<p className="text-sm mt-1">
-								Transfers matching this status {isSuperAdmin ? "" : "assigned to you"}{" "}
+								Transfers matching this {status === "ALL" ? "view" : "status"}{" "}
+								{isSuperAdmin ? "" : "assigned to you"}{" "}
 								will appear here.
 							</p>
 						</Card>

@@ -94,7 +94,7 @@ export function useWallet() {
 
 	const fetchSavedBankAccounts = useCallback(async (identifier: string) => {
 		const WHATSAPP_API_URL =
-			import.meta.env.VITE_WHATSAPP_BACKEND_URL ||
+			process.env.NEXT_PUBLIC_WHATSAPP_BACKEND_URL ||
 			"https://whatsapp-backend-ix4v.onrender.com/api";
 		try {
 			const response = await fetch(

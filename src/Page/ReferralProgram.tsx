@@ -120,7 +120,7 @@ export function ReferralProgram() {
 
 			try {
 				const backendUrl =
-					import.meta.env.VITE_WHATSAPP_BACKEND_URL ||
+					process.env.NEXT_PUBLIC_WHATSAPP_BACKEND_URL ||
 					"https://mysound-whatsapp-backend.onrender.com/api";
 
 				const query = new URLSearchParams({
@@ -202,7 +202,7 @@ export function ReferralProgram() {
 			if (!activity) return;
 
 			const backendUrl =
-				import.meta.env.VITE_WHATSAPP_BACKEND_URL ||
+				process.env.NEXT_PUBLIC_WHATSAPP_BACKEND_URL ||
 				"https://mysound-whatsapp-backend.onrender.com/api";
 
 			const query = new URLSearchParams({
