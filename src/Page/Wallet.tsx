@@ -23,6 +23,7 @@ import {
 	Dialog,
 	DialogContent,
 	DialogDescription,
+	DialogFooter,
 	DialogHeader,
 	DialogTitle,
 	DialogTrigger,
@@ -45,7 +46,25 @@ import { customToast } from "./CustomToast";
 
 import { useParams } from "react-router-dom";
 import { useTransfers, type PendingTransfer } from "../hooks/useTransfers";
+import { type VirtualAccount } from "../hooks/useWallet";
 import { ArrowRightLeft, Loader2 } from "lucide-react";
+
+/** Pick the first live (non-test) virtual account, falling back to the first active one. */
+function pickLiveAccount(accounts: VirtualAccount[] | undefined): VirtualAccount | undefined {
+	if (!accounts?.length) return undefined;
+	const TEST_BANKS = ["wema", "9psb", "providus", "test"];
+	return (
+		accounts.find(
+			(a) =>
+				a.isActive &&
+				!TEST_BANKS.some((t) => a.bankName.toLowerCase().includes(t)) &&
+				!a.accountName.toLowerCase().includes("test") &&
+				!/^1230\d{6,}$/.test(a.accountNumber),
+		) ??
+			accounts.find((a) => a.isActive) ??
+			accounts[0]
+		);
+}
 
 export function Wallet() {
 	const { userId } = useParams();
@@ -68,6 +87,9 @@ export function Wallet() {
 	const [activeTab, setActiveTab] = useState("overview");
 	const [addMethodDialogOpen, setAddMethodDialogOpen] = useState(false);
 	const [refreshLoading, setRefreshLoading] = useState(false);
+	const [permTokenDialogOpen, setPermTokenDialogOpen] = useState(false);
+	const [permToken, setPermToken] = useState("");
+	const [pendingTokenTransfer, setPendingTokenTransfer] = useState<PendingTransfer | null>(null);
 
 	useEffect(() => {
 		if (userId) {
@@ -119,19 +141,9 @@ export function Wallet() {
 		}
 	};
 
-	const handleExecuteTransfer = async (transfer: PendingTransfer) => {
+	const doExecuteTransfer = async (transfer: PendingTransfer, permissionToken?: string) => {
 		setExecutingId(transfer.id);
 		try {
-			const permissionToken =
-				transfer.assignedPaId ?
-					window.prompt("Enter transfer permission token")?.trim()
-				: undefined;
-
-			if (transfer.assignedPaId && !permissionToken) {
-				customToast.error("Permission token is required for assigned transfer");
-				return;
-			}
-
 			await executeEmergencyTransfer(transfer.id, permissionToken);
 			customToast.success({
 				title: "Transfer executed",
@@ -139,11 +151,30 @@ export function Wallet() {
 			});
 			await getPendingTransfers();
 		} catch (err: any) {
-			const msg = err.response?.data?.error?.message || "Failed to execute transfer";
+			const msg = err.response?.data?.error?.message || err.message || "Failed to execute transfer";
 			customToast.error(msg);
 		} finally {
 			setExecutingId(null);
 		}
+	};
+
+	const handleExecuteTransfer = (transfer: PendingTransfer) => {
+		if (transfer.assignedPaId) {
+			setPendingTokenTransfer(transfer);
+			setPermToken("");
+			setPermTokenDialogOpen(true);
+		} else {
+			doExecuteTransfer(transfer);
+		}
+	};
+
+	const handlePermTokenConfirm = () => {
+		if (!permToken.trim()) {
+			customToast.error("Permission token is required");
+			return;
+		}
+		setPermTokenDialogOpen(false);
+		if (pendingTokenTransfer) doExecuteTransfer(pendingTokenTransfer, permToken.trim());
 	};
 
 	return (
@@ -230,10 +261,10 @@ export function Wallet() {
 						</div>
 						<div>
 							<p className="text-xs text-zinc-500 dark:text-zinc-400 mb-1 font-medium uppercase tracking-wider">
-								{wallet?.virtualAccounts?.[0]?.bankName || "No virtual account"}
-							</p>
-							<p className="text-2xl text-zinc-900 dark:text-zinc-100 font-black tracking-tighter">
-								{wallet?.virtualAccounts?.[0]?.accountNumber || "N/A"}
+							{pickLiveAccount(wallet?.virtualAccounts)?.bankName || "No virtual account"}
+						</p>
+						<p className="text-2xl text-zinc-900 dark:text-zinc-100 font-black tracking-tighter">
+							{pickLiveAccount(wallet?.virtualAccounts)?.accountNumber || "N/A"}
 							</p>
 						</div>
 					</Card>
@@ -482,6 +513,48 @@ export function Wallet() {
 					)}
 				</Tabs>
 			</div>
-		</div>
+
+		{/* Permission token dialog */}
+		<Dialog open={permTokenDialogOpen} onOpenChange={setPermTokenDialogOpen}>
+			<DialogContent className="font-sans border-none shadow-2xl rounded-3xl p-6 bg-white dark:bg-zinc-900">
+				<DialogHeader className="mb-4">
+					<DialogTitle className="text-xl font-black tracking-tight">
+						Permission Token Required
+					</DialogTitle>
+					<DialogDescription className="text-zinc-500">
+						This transfer is assigned to a PA. Enter the permission token to execute it.
+					</DialogDescription>
+				</DialogHeader>
+				<div className="space-y-3">
+					<Label htmlFor="perm-token" className="text-xs font-bold uppercase tracking-widest text-zinc-400">
+						Permission Token
+					</Label>
+					<Input
+						id="perm-token"
+						value={permToken}
+						onChange={(e) => setPermToken(e.target.value)}
+						onKeyDown={(e) => e.key === "Enter" && handlePermTokenConfirm()}
+						placeholder="Enter token..."
+						className="h-12 bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl font-mono"
+						autoFocus
+					/>
+				</div>
+				<DialogFooter className="mt-4 gap-2">
+					<Button variant="outline" onClick={() => setPermTokenDialogOpen(false)}>
+						Cancel
+					</Button>
+					<Button
+						onClick={handlePermTokenConfirm}
+						disabled={!permToken.trim() || executingId === pendingTokenTransfer?.id}
+						className="bg-violet-700 hover:bg-violet-800 text-white">
+						{executingId === pendingTokenTransfer?.id ?
+							<Loader2 className="size-4 animate-spin mr-2" />
+						: null}
+						Execute Transfer
+					</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
+	</div>
 	);
 }

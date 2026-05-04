@@ -168,10 +168,10 @@ export function useBookings() {
 		} catch (err: unknown) {
 			if (err && typeof err === "object" && "response" in err) {
 				const error = err as {
-					response?: { data?: { message?: string } };
+					response?: { data?: { error?: { message?: string }; message?: string } };
 				};
 				setDashboardStatsError(
-					error.response?.data?.message || "Failed to fetch dashboard stats",
+					error.response?.data?.error?.message || error.response?.data?.message || "Failed to fetch dashboard stats",
 				);
 			} else {
 				setDashboardStatsError(

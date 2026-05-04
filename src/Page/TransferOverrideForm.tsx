@@ -24,6 +24,14 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "../components/ui/alert-dialog";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "../components/ui/dialog";
 import { Badge } from "../components/ui/badge";
 import { ScrollArea } from "../components/ui/scroll-area";
 import { useTransfers } from "../hooks/useTransfers";
@@ -32,6 +40,9 @@ import { Clock, PlayCircle, Loader2 } from "lucide-react";
 export function TransferOverrideForm() {
 	const [showConfirm, setShowConfirm] = useState(false);
 	const [executingId, setExecutingId] = useState<string | null>(null);
+	const [permTokenDialogOpen, setPermTokenDialogOpen] = useState(false);
+	const [permToken, setPermToken] = useState("");
+	const [pendingTokenTransfer, setPendingTokenTransfer] = useState<{ id: string; assignedPaId?: string } | null>(null);
 	const {
 		getPendingTransfers,
 		pendingTransfers,
@@ -43,29 +54,38 @@ export function TransferOverrideForm() {
 		getPendingTransfers();
 	}, [getPendingTransfers]);
 
-	const handleExecute = async (transfer: { id: string; assignedPaId?: string }) => {
+	const doExecute = async (transfer: { id: string; assignedPaId?: string }, permissionToken?: string) => {
 		setExecutingId(transfer.id);
 		try {
-			const permissionToken =
-				transfer.assignedPaId ?
-					window.prompt("Enter transfer permission token")?.trim()
-				: undefined;
-
-			if (transfer.assignedPaId && !permissionToken) {
-				customToast.error("Permission token is required for assigned transfer");
-				return;
-			}
-
 			await executeEmergencyTransfer(transfer.id, permissionToken);
 			customToast.success("Transfer executed successfully");
 			getPendingTransfers();
 		} catch (error: any) {
 			customToast.error(
-				error.response?.data?.message || "Failed to execute transfer",
+				error.response?.data?.error?.message || error.message || "Failed to execute transfer",
 			);
 		} finally {
 			setExecutingId(null);
 		}
+	};
+
+	const handleExecute = (transfer: { id: string; assignedPaId?: string }) => {
+		if (transfer.assignedPaId) {
+			setPendingTokenTransfer(transfer);
+			setPermToken("");
+			setPermTokenDialogOpen(true);
+		} else {
+			doExecute(transfer);
+		}
+	};
+
+	const handlePermTokenConfirm = () => {
+		if (!permToken.trim()) {
+			customToast.error("Permission token is required");
+			return;
+		}
+		setPermTokenDialogOpen(false);
+		if (pendingTokenTransfer) doExecute(pendingTokenTransfer, permToken.trim());
 	};
 
 	const [formData, setFormData] = useState({
@@ -366,6 +386,46 @@ export function TransferOverrideForm() {
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>
-		</div>
+
+		{/* Permission token dialog */}
+		<Dialog open={permTokenDialogOpen} onOpenChange={setPermTokenDialogOpen}>
+			<DialogContent className="font-sans border-none shadow-2xl rounded-2xl p-6 bg-white dark:bg-zinc-900">
+				<DialogHeader className="mb-4">
+					<DialogTitle className="text-xl font-black tracking-tight">
+						Permission Token Required
+					</DialogTitle>
+					<DialogDescription className="text-zinc-500">
+						This transfer is assigned to a PA. Enter the permission token to execute.
+					</DialogDescription>
+				</DialogHeader>
+				<div className="space-y-2">
+					<Label htmlFor="override-perm-token" className="text-xs font-bold uppercase tracking-widest text-zinc-400">
+						Permission Token
+					</Label>
+					<Input
+						id="override-perm-token"
+						value={permToken}
+						onChange={(e) => setPermToken(e.target.value)}
+						onKeyDown={(e) => e.key === "Enter" && handlePermTokenConfirm()}
+						placeholder="Enter token..."
+						className="h-11 bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl font-mono"
+						autoFocus
+					/>
+				</div>
+				<DialogFooter className="mt-4 gap-2">
+					<Button variant="outline" onClick={() => setPermTokenDialogOpen(false)}>Cancel</Button>
+					<Button
+						onClick={handlePermTokenConfirm}
+						disabled={!permToken.trim() || executingId === pendingTokenTransfer?.id}
+						className="bg-green-700 hover:bg-green-800 text-white">
+						{executingId === pendingTokenTransfer?.id ?
+							<Loader2 className="size-4 animate-spin mr-2" />
+						: null}
+						Execute
+					</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
+	</div>
 	);
 }

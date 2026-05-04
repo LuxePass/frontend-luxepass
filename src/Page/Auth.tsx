@@ -29,10 +29,11 @@ export const AuthFlow = () => {
 			}
 		} catch (err: unknown) {
 			const errorObj = err as {
-				response?: { data?: { message?: string } };
+				response?: { data?: { error?: { message?: string }; message?: string } };
 				message?: string;
 			};
 			const message =
+				errorObj.response?.data?.error?.message ||
 				errorObj.response?.data?.message ||
 				errorObj.message ||
 				"Authentication failed. Please check your credentials.";
@@ -47,11 +48,14 @@ export const AuthFlow = () => {
 			toast.success("Log in successful!");
 		} catch (err: unknown) {
 			const errorObj = err as {
-				response?: { data?: { message?: string } };
+				response?: { data?: { error?: { message?: string }; message?: string } };
 				message?: string;
 			};
 			const message =
-				errorObj.response?.data?.message || errorObj.message || "Invalid 2FA code";
+				errorObj.response?.data?.error?.message ||
+				errorObj.response?.data?.message ||
+				errorObj.message ||
+				"Invalid 2FA code";
 			toast.error(message);
 		}
 	};
