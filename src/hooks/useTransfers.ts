@@ -56,10 +56,10 @@ export function useTransfers() {
 	const getTransfers = useCallback(
 		async (params?: Record<string, unknown>) => {
 			try {
-				return await request(api.get("/transfers", { params }));
+				return await request(api.get("/transfers/pa/list", { params }));
 			} catch (_error: unknown) {
 				const err = _error as { response?: { status?: number } };
-				if (err?.response?.status === 403) {
+				if (err?.response?.status === 403 || err?.response?.status === 401) {
 					return { data: [], meta: null };
 				}
 				throw _error;
