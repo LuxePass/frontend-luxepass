@@ -121,7 +121,7 @@ export function ReferralProgram() {
 			try {
 				const backendUrl =
 					process.env.NEXT_PUBLIC_WHATSAPP_BACKEND_URL ||
-					"https://mysound-whatsapp-backend.onrender.com/api";
+					"https://whatsapp-backend-luxepass.onrender.com/api";
 
 				const query = new URLSearchParams({
 					paId: user.id,
@@ -203,7 +203,7 @@ export function ReferralProgram() {
 
 			const backendUrl =
 				process.env.NEXT_PUBLIC_WHATSAPP_BACKEND_URL ||
-				"https://mysound-whatsapp-backend.onrender.com/api";
+				"https://whatsapp-backend-luxepass.onrender.com/api";
 
 			const query = new URLSearchParams({
 				paId: user?.id || "",

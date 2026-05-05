@@ -44,7 +44,7 @@ export function useReferrals() {
 		try {
 			const backendUrl =
 				process.env.NEXT_PUBLIC_WHATSAPP_BACKEND_URL ||
-				"https://mysound-whatsapp-backend.onrender.com/api";
+				"https://whatsapp-backend-luxepass.onrender.com/api";
 			const response = await fetch(`${backendUrl}/referrals/stats`);
 			const data = await response.json();
 

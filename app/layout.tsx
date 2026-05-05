@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "../src/index.css";
 
 export const metadata: Metadata = {
-  title: "LuxePass",
-  description: "LuxePass Admin Dashboard",
+  title: "Aseta",
+  description: "Aseta Admin Dashboard",
 };
 
 export default function RootLayout({
