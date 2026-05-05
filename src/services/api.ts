@@ -1,7 +1,10 @@
 import axios from "axios";
 
 export const API_BASE_URL =
-	process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000/api/v1";
+	process.env.NEXT_PUBLIC_API_BASE_URL ||
+	(typeof window !== "undefined" && window.location.hostname === "localhost"
+		? "http://localhost:4000/api/v1"
+		: "https://backend-luxepass-sruf.onrender.com/api/v1");
 
 const api = axios.create({
 	baseURL: API_BASE_URL,
