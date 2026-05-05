@@ -93,7 +93,14 @@ export function useTransfers() {
 	const getPaTransfers = useCallback(
 		async (params?: { status?: string; limit?: number; offset?: number }) => {
 			try {
-				const res = await requestPending(api.get("/transfers/pa/list", { params }));
+				const res = await requestPending(
+					api.get("/transfers/pa/list", {
+						params: {
+							limit: 100,
+							...params,
+						},
+					}),
+				);
 				return res;
 			} catch (_err: unknown) {
 				const err = _err as { response?: { status?: number } };

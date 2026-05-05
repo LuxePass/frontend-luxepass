@@ -142,7 +142,6 @@ export function TransferRequests() {
 	const {
 		pendingTransfers,
 		pendingLoading,
-		getPendingTransfers,
 		getPaTransfers,
 		executeEmergencyTransfer,
 		rejectTransfer,
@@ -160,12 +159,8 @@ export function TransferRequests() {
 	const isSuperAdmin = user?.role === "SUPER_ADMIN";
 
 	useEffect(() => {
-		if (status === "PENDING") {
-			getPendingTransfers();
-		} else {
-			getPaTransfers(status === "ALL" ? undefined : { status });
-		}
-	}, [status, getPendingTransfers, getPaTransfers]);
+		getPaTransfers(status === "ALL" ? { limit: 100 } : { status, limit: 100 });
+	}, [status, getPaTransfers]);
 
 	useEffect(() => {
 		if (detailId) getTransferById(detailId);
@@ -179,8 +174,7 @@ export function TransferRequests() {
 		try {
 			await executeEmergencyTransfer(transfer.id, permissionToken);
 			closeDetail();
-			if (status === "PENDING") getPendingTransfers();
-			else getPaTransfers(status === "ALL" ? undefined : { status });
+			getPaTransfers(status === "ALL" ? { limit: 100 } : { status, limit: 100 });
 		} catch (err: any) {
 			const msg = err.response?.data?.error?.message || err.message || "Failed to execute transfer";
 			customToast.error(msg);
@@ -210,8 +204,7 @@ export function TransferRequests() {
 		try {
 			await rejectTransfer(id, reason);
 			closeDetail();
-			if (status === "PENDING") getPendingTransfers();
-			else getPaTransfers(status === "ALL" ? undefined : { status });
+			getPaTransfers(status === "ALL" ? { limit: 100 } : { status, limit: 100 });
 		} finally {
 			setActionLoading(null);
 		}
@@ -220,8 +213,10 @@ export function TransferRequests() {
 	const statuses = [
 		{ id: "ALL", label: "All" },
 		{ id: "PENDING", label: "Pending" },
+		{ id: "PROCESSING", label: "Processing" },
 		{ id: "SUCCESS", label: "Successful" },
 		{ id: "REJECTED", label: "Rejected" },
+		{ id: "REVERSED", label: "Reversed" },
 		{ id: "FAILED", label: "Failed" },
 	];
 
@@ -250,9 +245,9 @@ export function TransferRequests() {
 							variant="outline"
 							size="sm"
 							onClick={() =>
-								status === "PENDING" ?
-									getPendingTransfers()
-								: 	getPaTransfers(status === "ALL" ? undefined : { status })
+								getPaTransfers(
+									status === "ALL" ? { limit: 100 } : { status, limit: 100 },
+								)
 							}
 							disabled={pendingLoading}>
 							{pendingLoading ?
