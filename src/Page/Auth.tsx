@@ -117,7 +117,7 @@ export const AuthFlow = () => {
 								disabled={loading}>
 								{loading ?
 									<span className="flex items-center gap-2">
-										<div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+										<div className="size-4 border-2 border-white/30 border-t-white rounded-full " />
 										Verifying...
 									</span>
 								:	<span className="flex items-center gap-2">
@@ -194,7 +194,7 @@ export const AuthFlow = () => {
 								disabled={loading}>
 								{loading ?
 									<span className="flex items-center gap-2">
-										<div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+										<div className="size-4 border-2 border-white/30 border-t-white rounded-full " />
 										Signing in...
 									</span>
 								:	<span className="flex items-center gap-2">

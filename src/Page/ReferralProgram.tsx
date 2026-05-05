@@ -372,7 +372,7 @@ export function ReferralProgram() {
 		return (
 			<div className="h-full flex items-center justify-center bg-zinc-50 dark:bg-zinc-950">
 				<div className="flex flex-col items-center gap-4">
-					<div className="size-10 border-4 border-violet-600 border-t-transparent rounded-full animate-spin" />
+					<span className="text-sm text-zinc-500 dark:text-zinc-400">Loading...</span>
 					<p className="text-zinc-500 dark:text-zinc-400 animate-pulse">
 						Loading referral data...
 					</p>

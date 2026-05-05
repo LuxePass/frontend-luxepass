@@ -4,7 +4,7 @@ import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Textarea } from "../components/ui/textarea";
 import { ScrollArea } from "../components/ui/scroll-area";
-import { Megaphone, Send, Users, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { Megaphone, Send, Users, CheckCircle2, AlertCircle } from "lucide-react";
 import { customToast } from "./CustomToast";
 
 interface Recipient {
@@ -171,7 +171,7 @@ export function Marketing() {
 				<div className="p-3 lg:p-6">
 					{loadingRecipients ? (
 						<div className="flex items-center justify-center py-12 gap-2 text-zinc-500">
-							<Loader2 className="size-5 animate-spin" />
+							<span className="text-xs">...</span>
 							<span>Loading recipients…</span>
 						</div>
 					) : tab === "direct" ? (
@@ -226,7 +226,7 @@ export function Marketing() {
 									disabled={directSending}
 									className="bg-violet-600 hover:bg-violet-700">
 									{directSending ? (
-										<Loader2 className="size-4 animate-spin mr-2" />
+										<span className="text-xs">...</span>
 									) : (
 										<Send className="size-4 mr-2" />
 									)}
@@ -298,7 +298,7 @@ export function Marketing() {
 										disabled={broadcastSending}
 										className="bg-violet-600 hover:bg-violet-700">
 										{broadcastSending ? (
-											<Loader2 className="size-4 animate-spin mr-2" />
+											<span className="text-xs">...</span>
 										) : (
 											<Send className="size-4 mr-2" />
 										)}

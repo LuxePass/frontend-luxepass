@@ -648,7 +648,7 @@ export function ListingManagement() {
 					<div className="py-3 pb-safe">
 						{loading ? (
 							<div className="flex items-center justify-center p-20">
-								<div className="size-8 border-2 border-violet-600 border-t-transparent rounded-full animate-spin" />
+								<span className="text-sm text-zinc-500 dark:text-zinc-400">Loading...</span>
 							</div>
 						) : (
 							<>
@@ -869,7 +869,7 @@ export function ListingManagement() {
 							<label className="flex flex-col items-center justify-center aspect-square rounded-lg border-2 border-dashed border-zinc-300 dark:border-zinc-700 hover:border-violet-500 dark:hover:border-violet-500 cursor-pointer transition-colors bg-zinc-50 dark:bg-zinc-900/50">
 								<div className="flex flex-col items-center gap-2 text-zinc-500 dark:text-zinc-400">
 									{uploading ? (
-										<div className="size-8 border-2 border-violet-600 border-t-transparent rounded-full animate-spin" />
+										<span className="text-sm text-zinc-500 dark:text-zinc-400">Loading...</span>
 									) : (
 										<>
 											<Upload className="size-8" />

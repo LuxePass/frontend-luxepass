@@ -106,7 +106,7 @@ export function TaskQueue({ selectedClient }: TaskQueueProps) {
 				<div className="p-2 lg:p-4 flex flex-col gap-2 lg:gap-3 pb-safe">
 					{loading ? (
 						<div className="flex items-center justify-center p-10">
-							<div className="size-6 border-2 border-violet-600 border-t-transparent rounded-full animate-spin" />
+							<span className="text-sm text-zinc-500 dark:text-zinc-400">Loading...</span>
 						</div>
 					) : inquiries.length === 0 ? (
 						<div className="p-8 text-center">

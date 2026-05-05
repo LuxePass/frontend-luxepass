@@ -208,7 +208,7 @@ export function QuickViews({
 								className={`p-4 cursor-pointer transition-all hover:shadow-md active:scale-98 bg-white dark:bg-zinc-900/50 border-2 ${item.borderColor} relative overflow-hidden`}>
 								{item.loading && (
 									<div className="absolute inset-0 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-[1px] flex items-center justify-center z-10">
-										<div className="size-5 border-2 border-violet-600 border-t-transparent rounded-full animate-spin" />
+										<span className="text-sm text-zinc-500 dark:text-zinc-400">Loading...</span>
 									</div>
 								)}
 								<div className="flex items-start justify-between mb-3">

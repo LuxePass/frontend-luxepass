@@ -1408,7 +1408,7 @@ export function LiveChat() {
 							onClick={handleRefresh}
 							disabled={isRefreshing}
 							title="Refresh conversations">
-							<RefreshCw className={cn("size-4", isRefreshing && "animate-spin")} />
+							<RefreshCw className={cn("size-4", isRefreshing && "")} />
 						</Button>
 					</div>
 				</div>
@@ -1536,7 +1536,7 @@ export function LiveChat() {
 									disabled={isLoadingMessages}
 									title="Refresh messages">
 									<RefreshCw
-										className={cn("size-4", isLoadingMessages && "animate-spin")}
+										className={cn("size-4", isLoadingMessages && "")}
 									/>
 								</Button>
 								<Separator
@@ -1871,7 +1871,7 @@ export function LiveChat() {
 											)}
 										</div>
 										{transferringToPaId === pa.id && (
-											<RefreshCw className="size-4 animate-spin text-zinc-500 shrink-0" />
+											<RefreshCw className="size-4  text-zinc-500 shrink-0" />
 										)}
 									</button>
 								))}

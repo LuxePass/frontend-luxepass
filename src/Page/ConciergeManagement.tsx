@@ -391,7 +391,7 @@ export function ConciergeManagement() {
 					<div className="py-3">
 						{loading ?
 							<div className="flex items-center justify-center p-20">
-								<div className="size-8 border-2 border-violet-600 border-t-transparent rounded-full animate-spin" />
+								<span className="text-sm text-zinc-500 dark:text-zinc-400">Loading...</span>
 							</div>
 						:	<Table>
 								<TableHeader>

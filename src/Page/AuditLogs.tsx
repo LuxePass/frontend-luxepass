@@ -164,7 +164,7 @@ export function AuditLogs() {
 					</DialogHeader>
 					{detailLoading ? (
 						<div className="py-8 flex justify-center">
-							<div className="size-8 border-2 border-violet-600 border-t-transparent rounded-full animate-spin" />
+							<span className="text-sm text-zinc-500 dark:text-zinc-400">Loading...</span>
 						</div>
 					) : detailLog ? (
 						<div className="space-y-3 text-sm overflow-y-auto">

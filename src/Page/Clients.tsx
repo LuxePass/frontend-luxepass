@@ -52,7 +52,7 @@ export function Clients() {
 			<Card className="flex-1 overflow-hidden bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 shadow-none flex flex-col">
 				{loading ?
 					<div className="flex-1 flex items-center justify-center p-8">
-						<div className="size-8 border-2 border-violet-600 border-t-transparent rounded-full animate-spin" />
+						<span className="text-sm text-zinc-500 dark:text-zinc-400">Loading...</span>
 					</div>
 				: clients.length === 0 ?
 					<div className="flex-1 flex flex-col items-center justify-center p-8 text-center">

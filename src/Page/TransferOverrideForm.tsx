@@ -35,7 +35,7 @@ import {
 import { Badge } from "../components/ui/badge";
 import { ScrollArea } from "../components/ui/scroll-area";
 import { useTransfers } from "../hooks/useTransfers";
-import { Clock, PlayCircle, Loader2 } from "lucide-react";
+import { Clock, PlayCircle } from "lucide-react";
 
 export function TransferOverrideForm() {
 	const [showConfirm, setShowConfirm] = useState(false);
@@ -162,7 +162,7 @@ export function TransferOverrideForm() {
 							</h3>
 							{pendingLoading ? (
 								<div className="flex items-center gap-2 text-sm text-zinc-500 py-4">
-									<Loader2 className="size-4 animate-spin" />
+									<span className="text-xs">...</span>
 									Loading pending transfers…
 								</div>
 							) : pendingTransfers.length === 0 ? (
@@ -206,7 +206,7 @@ export function TransferOverrideForm() {
 												disabled={executingId === t.id}
 												className="shrink-0 bg-green-700 hover:bg-green-800 text-white">
 												{executingId === t.id ? (
-													<Loader2 className="size-4 mr-1.5 animate-spin" />
+													<span className="text-xs">...</span>
 												) : (
 													<PlayCircle className="size-4 mr-1.5" />
 												)}
@@ -419,7 +419,7 @@ export function TransferOverrideForm() {
 						disabled={!permToken.trim() || executingId === pendingTokenTransfer?.id}
 						className="bg-green-700 hover:bg-green-800 text-white">
 						{executingId === pendingTokenTransfer?.id ?
-							<Loader2 className="size-4 animate-spin mr-2" />
+							<span className="text-xs">...</span>
 						: null}
 						Execute
 					</Button>

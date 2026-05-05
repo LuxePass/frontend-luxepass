@@ -172,7 +172,7 @@ export function PAManager() {
 						size="icon"
 						onClick={fetchPas}
 						disabled={loading}>
-						<RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} />
+						<RefreshCw className={`size-4 ${loading ? "" : ""}`} />
 					</Button>
 					<Dialog
 						open={createOpen}

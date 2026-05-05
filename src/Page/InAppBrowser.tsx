@@ -158,7 +158,7 @@ export function InAppBrowser({ onClose }: InAppBrowserProps) {
 							size="sm"
 							disabled={!currentUrl}
 							className="size-9 p-0">
-							<RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} />
+							<RefreshCw className={`size-4 ${loading ? "" : ""}`} />
 						</Button>
 					</div>
 

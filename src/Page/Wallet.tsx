@@ -47,7 +47,7 @@ import { customToast } from "./CustomToast";
 import { useParams } from "react-router-dom";
 import { useTransfers, type PendingTransfer } from "../hooks/useTransfers";
 import { type VirtualAccount } from "../hooks/useWallet";
-import { ArrowRightLeft, Loader2 } from "lucide-react";
+import { ArrowRightLeft } from "lucide-react";
 
 /** Pick the first live (non-test) virtual account, falling back to the first active one. */
 function pickLiveAccount(accounts: VirtualAccount[] | undefined): VirtualAccount | undefined {
@@ -283,7 +283,7 @@ export function Wallet() {
 						variant="outline"
 						className="h-12 gap-2 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-xl transition-all hover:scale-[1.02] active:scale-95 font-semibold"
 						onClick={handleRefresh}>
-						<RefreshCw className={cn("size-4", (loading || refreshLoading) && "animate-spin")} />
+						<RefreshCw className={cn("size-4", (loading || refreshLoading) && "")} />
 						Refresh
 					</Button>
 
@@ -457,7 +457,7 @@ export function Wallet() {
 								</p>
 								{pendingLoading ? (
 									<div className="flex items-center justify-center py-12">
-										<Loader2 className="size-8 animate-spin text-violet-600" />
+										<span className="text-xs">...</span>
 									</div>
 								) : pendingTransfers.length === 0 ? (
 									<Card className="p-16 text-center shadow-none border-dashed border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 rounded-3xl">
@@ -496,7 +496,7 @@ export function Wallet() {
 																onClick={() => handleExecuteTransfer(t)}
 																disabled={executingId === t.id}>
 																{executingId === t.id ? (
-																	<Loader2 className="size-4 animate-spin" />
+																	<span className="text-xs">...</span>
 																) : (
 																	"Execute"
 																)}
@@ -548,7 +548,7 @@ export function Wallet() {
 						disabled={!permToken.trim() || executingId === pendingTokenTransfer?.id}
 						className="bg-violet-700 hover:bg-violet-800 text-white">
 						{executingId === pendingTokenTransfer?.id ?
-							<Loader2 className="size-4 animate-spin mr-2" />
+							<span className="text-xs">...</span>
 						: null}
 						Execute Transfer
 					</Button>

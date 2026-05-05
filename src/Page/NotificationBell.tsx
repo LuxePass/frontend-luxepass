@@ -229,7 +229,7 @@ export function NotificationBell() {
 						<div className="p-3">
 							{loading && notifications.length === 0 ? (
 								<div className="p-8 flex justify-center">
-									<div className="size-8 border-2 border-violet-600 border-t-transparent rounded-full animate-spin" />
+									<span className="text-sm text-zinc-500 dark:text-zinc-400">Loading...</span>
 								</div>
 							) : notifications.length === 0 ? (
 								<div className="p-8 text-center">

@@ -23,7 +23,6 @@ import { Label } from "../components/ui/label";
 import { customToast } from "./CustomToast";
 import {
 	ShieldAlert,
-	Loader2,
 	RefreshCw,
 	CheckCircle2,
 	XCircle,
@@ -117,7 +116,7 @@ function TransferRow({
 								onClick={onExecute}
 								disabled={actionLoading}>
 								{actionLoading ?
-									<Loader2 className="size-4 animate-spin" />
+									<span className="text-xs">...</span>
 								:	<CheckCircle2 className="size-4 mr-1" />}
 								Execute
 							</Button>
@@ -257,7 +256,7 @@ export function TransferRequests() {
 							}
 							disabled={pendingLoading}>
 							{pendingLoading ?
-								<Loader2 className="size-4 animate-spin" />
+								<span className="text-xs">...</span>
 							:	<RefreshCw className="size-4" />}
 							<span className="ml-2">Refresh</span>
 						</Button>
@@ -292,7 +291,7 @@ export function TransferRequests() {
 				<div className="p-3 lg:p-6">
 					{pendingLoading && pendingTransfers.length === 0 ?
 						<div className="flex items-center justify-center py-12 gap-2 text-zinc-500">
-							<Loader2 className="size-5 animate-spin" />
+							<span className="text-xs">...</span>
 							<span>Loading transfers…</span>
 						</div>
 					: pendingTransfers.length === 0 ?
@@ -376,7 +375,7 @@ export function TransferRequests() {
 							disabled={!permToken.trim() || actionLoading === pendingTokenTransfer?.id}
 							className="bg-green-700 hover:bg-green-800 text-white">
 							{actionLoading === pendingTokenTransfer?.id ?
-								<Loader2 className="size-4 animate-spin mr-2" />
+								<span className="text-xs">...</span>
 							: null}
 							Execute
 						</Button>
@@ -419,7 +418,7 @@ function TransferDetailModal({
 				</DialogHeader>
 				{loading ?
 					<div className="flex items-center justify-center py-8 gap-2 text-zinc-500">
-						<Loader2 className="size-5 animate-spin" />
+						<span className="text-xs">...</span>
 						<span>Loading…</span>
 					</div>
 				: transfer ?
@@ -526,7 +525,7 @@ function TransferDetailModal({
 											onClick={onExecute}
 											disabled={actionLoading}>
 											{actionLoading ?
-												<Loader2 className="size-4 animate-spin" />
+												<span className="text-xs">...</span>
 											:	<CheckCircle2 className="size-4 mr-1" />}
 											Execute
 										</Button>
