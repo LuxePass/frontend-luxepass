@@ -14,9 +14,10 @@ interface ConversationApiItem extends Partial<ChatConversation> {
 	lastMessageTimestamp?: string | number;
 }
 
-const whatsappBackendBaseUrl =
-	process.env.NEXT_PUBLIC_WHATSAPP_BACKEND_URL ??
-	"https://whatsapp-backend-luxepass.onrender.com/api";
+const whatsappBackendBaseUrl = process.env.NEXT_PUBLIC_WHATSAPP_BACKEND_URL;
+if (!whatsappBackendBaseUrl) {
+	throw new Error("NEXT_PUBLIC_WHATSAPP_BACKEND_URL is required");
+}
 
 /**
  * @param paId - Current PA id. Required for fetching conversations (WhatsApp backend returns only conversations assigned to this PA).

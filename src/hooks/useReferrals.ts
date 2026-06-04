@@ -42,9 +42,8 @@ export function useReferrals() {
 	const fetchReferralData = useCallback(async () => {
 		setLoading(true);
 		try {
-			const backendUrl =
-				process.env.NEXT_PUBLIC_WHATSAPP_BACKEND_URL ||
-				"https://whatsapp-backend-luxepass.onrender.com/api";
+			const backendUrl = process.env.NEXT_PUBLIC_WHATSAPP_BACKEND_URL;
+			if (!backendUrl) throw new Error("NEXT_PUBLIC_WHATSAPP_BACKEND_URL is required");
 			const response = await fetch(`${backendUrl}/referrals/stats`);
 			const data = await response.json();
 
