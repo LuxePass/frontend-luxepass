@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: frontend-luxepass
+    env: node
+    plan: free
+    buildCommand: yarn install --frozen-lockfile && yarn build
+    startCommand: yarn start
+    envVars:
+      - key: NODE_ENV
+        value: production
